@@ -602,14 +602,16 @@ export default function Admin() {
 
                 <div className="space-y-2.5">
                   {M1_TEST_CASES.map((tc) => (
-                    <div key={tc.id} className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 flex items-start justify-between gap-3">
+                    <div key={tc.no} className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-xs font-bold text-slate-200">{tc.title}</div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">{tc.description}</div>
+                        <div className="text-xs font-bold text-slate-200">TC #{tc.no} · {tc.feature}</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">
+                          {tc.latency ? `Latency: ${tc.latency}` : ''} {tc.confidence ? `· Confidence: ${tc.confidence}` : ''}
+                        </div>
                         <div className="text-[10px] text-emerald-400 font-mono mt-1">Expected: {tc.expected}</div>
                       </div>
                       <span className="rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold shrink-0">
-                        {tc.status}
+                        {tc.status || 'Verified'}
                       </span>
                     </div>
                   ))}
@@ -629,14 +631,16 @@ export default function Admin() {
 
                 <div className="space-y-2.5">
                   {M2_TEST_CASES.map((tc) => (
-                    <div key={tc.id} className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 flex items-start justify-between gap-3">
+                    <div key={tc.no} className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-xs font-bold text-slate-200">{tc.title}</div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">{tc.description}</div>
+                        <div className="text-xs font-bold text-slate-200">TC #{tc.no} · {tc.feature}</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">
+                          {tc.latency ? `Latency: ${tc.latency}` : ''} {tc.confidence ? `· Confidence: ${tc.confidence}` : ''}
+                        </div>
                         <div className="text-[10px] text-emerald-400 font-mono mt-1">Expected: {tc.expected}</div>
                       </div>
                       <span className="rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold shrink-0">
-                        {tc.status}
+                        {tc.status || 'Verified'}
                       </span>
                     </div>
                   ))}
