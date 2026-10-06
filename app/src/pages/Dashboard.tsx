@@ -1,9 +1,10 @@
 import { useApp } from '@/lib/store'
 import { DOCUMENTS, PROJECTS, type ActivityItem } from '@/lib/data'
 import { Card } from '@/lib/ui'
+import { CircledOptionSelector } from '@/components/CircledOptionSelector'
 import {
   UploadCloud, FilePlus2, Layers, BookOpen, Award, FileText, ArrowRight,
-  BrainCircuit, Layers3, ShieldCheck, PenLine, FileDown, ChevronRight,
+  BrainCircuit, Layers3, ShieldCheck, PenLine, FileDown, ChevronRight, Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,40 +27,10 @@ export default function Dashboard() {
     { label: 'Recent AI Jobs', value: '17', delta: '1 processing' },
   ]
 
-  const quick = [
-    { label: 'Upload Document', icon: UploadCloud, fn: () => navigate('workflow') },
-    { label: 'Create Document', icon: FilePlus2, fn: () => navigate('workflow') },
-    { label: 'Start from Template', icon: Layers, fn: () => navigate('templates') },
-    { label: 'Research Workspace', icon: BookOpen, fn: () => navigate('research') },
-    { label: 'Certificate Automation', icon: Award, fn: () => navigate('certificates'), highlight: true },
-  ]
-
   return (
-    <div className="animate-fade-up">
-      {/* Welcome */}
-      <div className="mb-6 rounded-2xl gradient-brand-soft border border-indigo-100 p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Welcome back, Aadesh</h1>
-            <p className="mt-1 text-sm text-slate-600">One platform. Multiple document types. <span className="font-medium text-indigo-700">Understand · Edit · Personalize · Generate · Automate</span></p>
-          </div>
-          <button onClick={() => navigate('workflow')} className="inline-flex items-center gap-2 rounded-xl gradient-brand px-5 py-2.5 text-sm font-semibold text-white shadow-lift hover:brightness-110">
-            <UploadCloud className="h-4 w-4" /> Upload Document
-          </button>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {quick.map(({ label, icon: Icon, fn, highlight }) => (
-            <button key={label} onClick={fn} className={cn(
-              'flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-left text-[13px] font-semibold transition hover:shadow-soft',
-              highlight ? 'border-violet-200 bg-white text-violet-700' : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200'
-            )}>
-              <Icon className={cn('h-4 w-4 shrink-0', highlight ? 'text-violet-500' : 'text-indigo-500')} />
-              {label}
-              <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-300" />
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="space-y-6 animate-fade-up">
+      {/* Concise Circled Options to Select & Proceed */}
+      <CircledOptionSelector />
 
       {/* Stats */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

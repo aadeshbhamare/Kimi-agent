@@ -188,26 +188,31 @@ export function AppShell({ children }: { children: ReactNode }) {
           )
         })}
 
-        {/* Workflow steps breakdown */}
-        <div className="pt-3 pb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          M1 Step Navigation
-        </div>
-        {WORKFLOW_NAV.map(({ key, label }) => {
-          const active = section === key
-          return (
-            <button
-              key={key}
-              onClick={() => { navigate(key); setMobileOpen(false) }}
-              className={cn(
-                'flex w-full items-center gap-2 rounded-xl px-3 py-1 text-[11.5px] font-medium transition-colors',
-                active ? 'bg-sky-50 text-sky-800 font-bold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-              )}
-            >
-              <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', active ? 'bg-sky-600' : 'bg-slate-300')} />
-              <span className="truncate">{label}</span>
-            </button>
-          )
-        })}
+        {/* Workflow steps breakdown - visible only when active in M1 */}
+        {section.startsWith('workflow') && (
+          <div className="pt-2 animate-fade-up">
+            <div className="pt-2 pb-1 px-3 text-[10px] font-extrabold uppercase tracking-wider text-sky-600 flex items-center justify-between">
+              <span>M1 Active Stepper</span>
+              <span className="rounded bg-sky-100 px-1 py-0.2 text-[9px] font-bold text-sky-700">7 Steps</span>
+            </div>
+            {WORKFLOW_NAV.map(({ key, label }) => {
+              const active = section === key
+              return (
+                <button
+                  key={key}
+                  onClick={() => { navigate(key); setMobileOpen(false) }}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-[11.5px] font-medium transition-colors mb-0.5',
+                    active ? 'bg-sky-50 text-sky-800 font-bold border border-sky-200 shadow-2xs' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                  )}
+                >
+                  <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', active ? 'bg-sky-600' : 'bg-slate-300')} />
+                  <span className="truncate">{label}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
       </nav>
 
       <div className="border-t border-slate-200 p-3.5 bg-slate-50/50">

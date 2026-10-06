@@ -186,7 +186,7 @@ export const ALL_PAGES: PageInfo[] = [
 
 export function PageShowcaseBar() {
   const { section, navigate } = useApp()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
   const [directoryOpen, setDirectoryOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [activeCategory, setActiveCategory] = useState<'All' | 'Marketing' | 'Core Platform' | 'Workflow Steps'>('All')
@@ -209,21 +209,17 @@ export function PageShowcaseBar() {
 
   if (collapsed) {
     return (
-      <div className="fixed top-3 right-4 z-50 flex items-center gap-2">
+      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
         <button
           onClick={() => setDirectoryOpen(true)}
-          className="flex items-center gap-1.5 rounded-full bg-slate-900/90 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md border border-slate-700/80 hover:bg-slate-800 transition-all hover:scale-105"
+          className="flex items-center gap-2 rounded-full bg-slate-900/90 hover:bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-2xl backdrop-blur-md border border-slate-700/80 transition-all hover:scale-105 active:scale-95 ring-1 ring-white/10"
+          title="Open complete frontend pages directory"
         >
-          <Grid3x3 className="h-3.5 w-3.5 text-indigo-400" />
-          <span>All Pages ({ALL_PAGES.length})</span>
-        </button>
-        <button
-          onClick={() => setCollapsed(false)}
-          className="flex items-center gap-1 rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xl hover:bg-indigo-500 transition-all hover:scale-105"
-          title="Expand Pages Showcase Bar"
-        >
-          <span>Page Showcase</span>
-          <ChevronDown className="h-3.5 w-3.5" />
+          <Grid3x3 className="h-4 w-4 text-indigo-400" />
+          <span>Page Navigator</span>
+          <span className="rounded-full bg-indigo-500/30 px-1.5 py-0.5 text-[10px] font-mono text-indigo-300">
+            {ALL_PAGES.length}
+          </span>
         </button>
 
         {directoryOpen && <DirectoryModal onClose={() => setDirectoryOpen(false)} />}

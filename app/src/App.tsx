@@ -23,22 +23,18 @@ function Router() {
 
   if (section === 'login') {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-950">
+      <div className="min-h-screen bg-slate-950">
+        <Login />
         <PageShowcaseBar />
-        <div className="flex-1">
-          <Login />
-        </div>
       </div>
     )
   }
 
   if (section === 'landing') {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
+      <div className="min-h-screen bg-white">
+        <Landing />
         <PageShowcaseBar />
-        <div className="flex-1">
-          <Landing />
-        </div>
       </div>
     )
   }
@@ -67,11 +63,9 @@ function Router() {
   }[section]
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="h-screen overflow-hidden">
+      <AppShell>{page}</AppShell>
       <PageShowcaseBar />
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <AppShell>{page}</AppShell>
-      </div>
     </div>
   )
 }
