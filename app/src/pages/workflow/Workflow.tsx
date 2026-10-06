@@ -8,6 +8,7 @@ import {
 import { DEFAULT_RECORDS, type GeneratedDoc, type StudentRecord } from '@/lib/data'
 import { UploadStep } from './UploadStep'
 import { AnalyzeStep } from './AnalyzeStep'
+import { ModelStep } from './ModelStep'
 import { EditorStep } from './EditorStep'
 import { GenerateStep } from './GenerateStep'
 import { ValidateStep } from './ValidateStep'
@@ -29,6 +30,11 @@ export interface UploadedFile {
   type: string
   size: string
   pages: number
+  isReal?: boolean
+  dataUrl?: string
+  originalImage?: string
+  fileContent?: string
+  imageDimensions?: { width: number; height: number }
 }
 
 const DEMO_FILE: UploadedFile = {
@@ -195,57 +201,3 @@ export default function Workflow({ initialStep = 0 }: { initialStep?: number }) 
   )
 }
 
-// ── STEP: Universal Document Model ──────────────────────────────────────────
-
-function ModelStep({ onContinue }: { onContinue: () => void }) {
-  const layers = [
-    { name: 'Content', desc: 'Headings, paragraphs, tables, equations — normalized text', pct: 100 },
-    { name: 'Structure', desc: 'Chapters → sections → blocks hierarchy (7 chapters, 23 sections)', pct: 100 },
-    { name: 'Layout', desc: 'Page geometry, bounding boxes, columns, margins', pct: 100 },
-    { name: 'Styles', desc: 'Fonts, sizes, spacing, alignment — format fingerprint', pct: 100 },
-    { name: 'Fields', desc: '6 semantic fields · 23 occurrences detected by AI', pct: 100 },
-    { name: 'Relationships', desc: 'Cross-references, citations ↔ bibliography, figure captions', pct: 96 },
-    { name: 'Metadata', desc: 'Author, title, version history, engine hints', pct: 100 },
-  ]
-  return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
-        <h2 className="text-base font-bold text-slate-900">Universal Document Model</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Your document has been converted into a structured semantic model. The same model powers editing,
-          personalization, validation and multi-format export — you never need to write LaTeX, Typst or placeholders.
-        </p>
-        <div className="mt-5 space-y-3">
-          {layers.map((l) => (
-            <div key={l.name} className="rounded-xl border border-slate-100 p-3.5 transition hover:border-indigo-200 hover:bg-indigo-50/40">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-slate-800">{l.name}</span>
-                <span className="text-[11px] font-medium text-emerald-600">✓ mapped</span>
-              </div>
-              <p className="mt-0.5 text-xs text-slate-500">{l.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="space-y-4">
-        <div className="rounded-2xl border border-indigo-100 gradient-brand-soft p-5">
-          <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Model summary</div>
-          <div className="mt-3 grid grid-cols-2 gap-3 text-center">
-            {[['7', 'Layers'], ['23', 'Field refs'], ['50', 'Pages'], ['7', 'Engines']].map(([v, l]) => (
-              <div key={l} className="rounded-xl bg-white/80 p-3">
-                <div className="text-xl font-bold text-slate-900">{v}</div>
-                <div className="text-[11px] text-slate-500">{l}</div>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-            One model → many outputs: PDF, DOCX, LaTeX, Typst, Quarto, HTML/CSS, Markdown.
-          </p>
-        </div>
-        <button onClick={onContinue} className="w-full rounded-xl gradient-brand px-4 py-2.5 text-sm font-semibold text-white shadow-lift hover:brightness-110">
-          Open Smart Field Selection →
-        </button>
-      </div>
-    </div>
-  )
-}

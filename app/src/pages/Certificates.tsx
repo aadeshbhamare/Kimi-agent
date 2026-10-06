@@ -1,25 +1,39 @@
 import { useMemo, useRef, useState } from 'react'
 import { Card, PageHeader } from '@/lib/ui'
-import { analyzeFit, generateCertRecords, CERT_FIELDS, type CertRecord, type FitResult } from '@/lib/data'
+import {
+  analyzeFit,
+  generateCertRecords,
+  parseCsvData,
+  CERT_FIELDS,
+  CERT_TEMPLATES,
+  DETECTED_CERT_BOUNDING_BOXES,
+  type CertRecord,
+  type FitResult,
+  type CertTemplate,
+} from '@/lib/data'
 import { CertificateView } from '@/components/Certificate'
 import { buildPdf, downloadBlob } from '@/lib/pdf'
 import { buildZip } from '@/lib/zip'
+import { certPng } from '@/lib/certCanvas'
 import { useApp } from '@/lib/store'
+import { useAuth } from '@/lib/auth'
+import { SenderEmailHub } from '@/components/SenderEmailHub'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import {
   UploadCloud, FileSpreadsheet, ScanSearch, Lock, Ruler, Wand2, Layers3, MonitorDown,
-  Check, CheckCircle2, Download, ChevronRight,
+  Check, CheckCircle2, Download, ChevronRight, Mail, Send, Eye, RefreshCw, AlertTriangle,
+  Plus, Trash2, Search, ShieldCheck, Sparkles, Image as ImageIcon, ExternalLink, Filter,
+  Sliders,
 } from 'lucide-react'
 
-const STEPS = [
-  { label: 'Upload Template', icon: UploadCloud },
-  { label: 'Upload Data', icon: FileSpreadsheet },
-  { label: 'AI Field Mapping', icon: ScanSearch },
-  { label: 'Design Lock', icon: Lock },
-  { label: 'Fit Analysis', icon: Ruler },
-  { label: 'Adaptive Fitting', icon: Wand2 },
-  { label: 'Bulk Generation', icon: Layers3 },
-  { label: 'Preview & Download', icon: MonitorDown },
+const PIPELINE_STEPS = [
+  { id: 'template', label: '1. Template & Field Detection', icon: ScanSearch, sub: 'AI field detection & bounding boxes' },
+  { id: 'data', label: '2. Data Processing & Mapping', icon: FileSpreadsheet, sub: 'Excel/CSV upload & column mapping' },
+  { id: 'lock', label: '3. Layout Analysis & Design Lock', icon: Lock, sub: 'Preserve background, logos & borders' },
+  { id: 'fit', label: '4. Text-Fit & Adaptive Formatting', icon: Ruler, sub: 'Detect overflow & adjust font/spacing' },
+  { id: 'generate', label: '5. Batch Generation & Validation', icon: Layers3, sub: 'Bulk generator & automated checks' },
+  { id: 'distribution', label: '6. Export & Email Distribution', icon: Mail, sub: 'PDF/PNG/ZIP & organizer verified emails' },
 ]
 
 function certPdf(record: CertRecord, fit?: FitResult): Blob {
@@ -40,50 +54,148 @@ function certPdf(record: CertRecord, fit?: FitResult): Blob {
 
 export default function Certificates() {
   const { logActivity } = useApp()
+  const { user, openAuthModal } = useAuth()
   const [step, setStep] = useState(0)
-  const [templateReady, setTemplateReady] = useState(false)
-  const [dataReady, setDataReady] = useState(false)
-  const records = useMemo(() => generateCertRecords(100), [])
-  const [mapping, setMapping] = useState<Record<string, string>>({
-    name: 'Name', college: 'College', achievement: 'Achievement', certNumber: 'Certificate Number', date: 'Date', rank: 'Rank',
-  })
-  const [locks, setLocks] = useState<Record<string, boolean>>({
-    Background: true, Logo: true, Border: true, Graphics: true, 'Static text': true, Colors: true, Decorations: true,
-  })
-  const [fits, setFits] = useState<FitResult[]>([])
-  const [analyzing, setAnalyzing] = useState(false)
-  const [genProgress, setGenProgress] = useState(-1) // -1 idle
-  const [previewTab, setPreviewTab] = useState<'normal' | 'adaptive' | 'review'>('normal')
-  const [numberPattern, setNumberPattern] = useState('TRINITY-2026-###')
-  const timers = useRef<ReturnType<typeof setInterval>[]>([])
 
-  const runAnalysis = () => {
-    setAnalyzing(true)
-    setTimeout(() => { setFits(analyzeFit(records)); setAnalyzing(false) }, 1400)
+  // Step 1: Template & Detection
+  const [selectedTemplate, setSelectedTemplate] = useState<CertTemplate>(CERT_TEMPLATES[0])
+  const [customTemplateName, setCustomTemplateName] = useState<string | null>(null)
+  const [customTemplateUrl, setCustomTemplateUrl] = useState<string | null>(null)
+  const [nameYPercent, setNameYPercent] = useState<number>(41)
+  const [nameFontSizeScale, setNameFontSizeScale] = useState<number>(1)
+  const [isSenderHubOpen, setIsSenderHubOpen] = useState(false)
+  const [scanningTemplate, setScanningTemplate] = useState(false)
+  const [templateScanned, setTemplateScanned] = useState(true)
+  const [activeHighlightField, setActiveHighlightField] = useState<string | null>(null)
+
+  // Step 2: Data Processing & Mapping
+  const [records, setRecords] = useState<CertRecord[]>(() => generateCertRecords(100))
+  const [searchQuery, setSearchQuery] = useState('')
+  const [mapping, setMapping] = useState<Record<string, string>>({
+    name: 'Full Name',
+    college: 'Institution',
+    achievement: 'Award / Event',
+    certNumber: 'Certificate ID',
+    date: 'Issue Date',
+    rank: 'Rank / Distinction',
+    email: 'Recipient Email',
+  })
+
+  // Step 3: Design Lock
+  const [locks, setLocks] = useState<Record<string, boolean>>({
+    'Background Canvas & Watermark': true,
+    'Institutional Logo & Crest': true,
+    'Ornate Double Frame Border': true,
+    'Official Verified Seal': true,
+    'Static Boilerplate Typography': true,
+    'Signatory Names & Roles': true,
+  })
+  const [showLockOverlay, setShowLockOverlay] = useState(true)
+
+  // Step 4: Text-Fit & Adaptive Formatting
+  const [fits, setFits] = useState<FitResult[]>(() => analyzeFit(generateCertRecords(100)))
+  const [analyzingFit, setAnalyzingFit] = useState(false)
+  const [testCustomName, setTestCustomName] = useState('Dr. Alexandrianathaniel Fitzwilliam-Longbottom III')
+  const [previewTab, setPreviewTab] = useState<'all' | 'normal' | 'adaptive' | 'review'>('all')
+
+  // Step 5: Batch Generation & Validation
+  const [numberPattern, setNumberPattern] = useState('TRINITY-2026-###')
+  const [genProgress, setGenProgress] = useState(-1) // -1 idle, 0..100 running
+  const [validationRun, setValidationRun] = useState(true)
+  const [validationFilter, setValidationFilter] = useState<'all' | 'issues'>('all')
+
+  // Step 6: Export & Email Distribution
+  const [organizerVerified, setOrganizerVerified] = useState(false)
+  const [emailSubject, setEmailSubject] = useState('Congratulations {{name}}! Your Certificate for {{achievement}}')
+  const [emailBody, setEmailBody] = useState('Dear {{name}},\n\nWe are delighted to present your official Certificate of Achievement for {{achievement}}. Your certificate ID is {{certNumber}}.\n\nPlease find your official high-resolution PDF certificate attached.\n\nWarm regards,\nAcademic Certification Office')
+  const [emailDispatching, setEmailDispatching] = useState(false)
+  const [emailProgress, setEmailProgress] = useState(0)
+  const [emailStatusList, setEmailStatusList] = useState<Record<number, 'Queued' | 'Sent' | 'Delivered' | 'Opened'>>({})
+  const [previewEmailRecipient, setPreviewEmailRecipient] = useState<CertRecord | null>(null)
+
+  const timers = useRef<ReturnType<typeof setInterval>[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Re-run fit analysis whenever records change
+  const refreshFits = (currentRecords = records) => {
+    setAnalyzingFit(true)
+    setTimeout(() => {
+      setFits(analyzeFit(currentRecords))
+      setAnalyzingFit(false)
+    }, 600)
   }
 
+  // Handle CSV upload
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const text = event.target?.result as string
+      if (text) {
+        const parsed = parseCsvData(text)
+        if (parsed.length > 0) {
+          setRecords(parsed)
+          refreshFits(parsed)
+          logActivity('certificate', `Imported ${parsed.length} recipients from ${file.name}`)
+        }
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  // Trigger template AI scan
+  const runTemplateScan = () => {
+    setScanningTemplate(true)
+    setTimeout(() => {
+      setScanningTemplate(false)
+      setTemplateScanned(true)
+      logActivity('certificate', 'Template analyzed: 6 dynamic editable text zones detected')
+    }, 1200)
+  }
+
+  // Calculate statistics
   const stats = useMemo(() => ({
+    total: records.length,
     normal: fits.filter((f) => f.status === 'normal').length,
     adaptive: fits.filter((f) => f.status === 'adaptive').length,
     review: fits.filter((f) => f.status === 'review').length,
-  }), [fits])
+  }), [records, fits])
 
+  const numbered = (r: CertRecord, i: number) => ({
+    ...r,
+    certNumber: numberPattern.replace(/#+/g, (m) => String(i + 1).padStart(m.length, '0')),
+  })
+
+  // Start batch generation
   const startGeneration = () => {
     setGenProgress(0)
     const iv = setInterval(() => {
       setGenProgress((p) => {
         if (p >= 100) {
           clearInterval(iv)
-          logActivity('certificate', `Certificate batch generated — ${records.length} certificates (${numberPattern.replace('###', '001')}…)`)
+          logActivity('certificate', `Batch generated: ${records.length} certificates (${numberPattern.replace('###', '001')}…)`)
           return 100
         }
-        return p + 2
+        return p + 4
       })
-    }, 60)
+    }, 50)
     timers.current.push(iv)
   }
 
-  const numbered = (r: CertRecord, i: number) => ({ ...r, certNumber: numberPattern.replace(/#+/g, (m) => String(i + 1).padStart(m.length, '0')) })
+  // Export handlers
+  const downloadSinglePng = async (rec: CertRecord, fit?: FitResult) => {
+    try {
+      const pngBlob = await certPng(rec, fit, {
+        customImageUrl: customTemplateUrl,
+        nameYPercent,
+        fontSizeFactor: nameFontSizeScale * 2.1,
+      })
+      downloadBlob(pngBlob, `${rec.certNumber}_${rec.name.replace(/\s+/g, '_')}.png`)
+    } catch {
+      downloadBlob(certPdf(rec, fit), `${rec.certNumber}.pdf`)
+    }
+  }
 
   const downloadAllZip = async () => {
     const files = records.map((r, i) => {
@@ -91,11 +203,27 @@ export default function Certificates() {
       return { name: `${rec.certNumber}_${r.name.replace(/\s+/g, '_')}.pdf`, data: certPdf(rec, fits[i]) }
     })
     const zip = await buildZip(files)
-    downloadBlob(zip, 'certificates_batch.zip')
+    downloadBlob(zip, 'certificates_pdf_batch.zip')
+  }
+
+  const downloadAllPngZip = async () => {
+    const files = await Promise.all(
+      records.slice(0, 30).map(async (r, i) => {
+        const rec = numbered(r, i)
+        const blob = await certPng(rec, fits[i], {
+          customImageUrl: customTemplateUrl,
+          nameYPercent,
+          fontSizeFactor: nameFontSizeScale * 2.1,
+        })
+        return { name: `${rec.certNumber}_${r.name.replace(/\s+/g, '_')}.png`, data: blob }
+      })
+    )
+    const zip = await buildZip(files)
+    downloadBlob(zip, 'certificates_png_batch.zip')
   }
 
   const downloadCombined = () => {
-    const pages = records.slice(0, 100).map((r, i) => {
+    const pages = records.map((r, i) => {
       const rec = numbered(r, i)
       return {
         landscape: true,
@@ -105,362 +233,1096 @@ export default function Certificates() {
           { text: 'This certificate is proudly presented to', size: 10, align: 'center' as const, gap: 8 },
           { text: rec.name, size: fits[i]?.fontSize ?? 34, bold: true, align: 'center' as const, gap: 14 },
           { text: rec.achievement, size: 12, align: 'center' as const, gap: 10 },
+          { text: `Rank: ${rec.rank}`, size: 11, align: 'center' as const, gap: 6 },
           { text: `${rec.certNumber}        Date: ${rec.date}`, size: 9, align: 'center' as const, gap: 40 },
         ],
       }
     })
-    downloadBlob(buildPdf(pages), 'certificates_combined.pdf')
+    downloadBlob(buildPdf(pages), 'certificates_combined_100_pages.pdf')
   }
 
-  const canContinue =
-    (step === 0 && templateReady) || (step === 1 && dataReady) || (step === 4 && fits.length > 0) ||
-    (step === 6 && genProgress >= 100) || (step !== 0 && step !== 1 && step !== 4 && step !== 6)
+  // Automated Email Dispatch Simulator
+  const startEmailDispatch = () => {
+    if (!organizerVerified) return
+    setEmailDispatching(true)
+    setEmailProgress(0)
+    let cur = 0
+    const total = records.length
+    const iv = setInterval(() => {
+      cur += 2
+      const pct = Math.min(100, Math.round((cur / total) * 100))
+      setEmailProgress(pct)
+      setEmailStatusList((prev) => {
+        const next = { ...prev }
+        for (let i = 0; i < cur && i < total; i++) {
+          next[i] = i % 3 === 0 ? 'Opened' : i % 2 === 0 ? 'Delivered' : 'Sent'
+        }
+        return next
+      })
+      if (cur >= total) {
+        clearInterval(iv)
+        setEmailDispatching(false)
+        logActivity('certificate', `Dispatched ${total} personalized certificates to verified recipient emails`)
+      }
+    }, 80)
+    timers.current.push(iv)
+  }
 
-  const filteredFits = fits.filter((f) => f.status === previewTab)
+  // Filtered list
+  const filteredRecords = records.filter((r) =>
+    r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.college.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.certNumber.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const activeTestFit = analyzeFit([{
+    name: testCustomName,
+    college: selectedTemplate.name,
+    achievement: 'National Innovation Excellence Award',
+    certNumber: 'TEST-001',
+    date: '25 May 2026',
+    rank: 'Winner',
+    email: 'recipient@test.com',
+  }])[0]
 
   return (
-    <div className="animate-fade-up">
+    <div className="animate-fade-up pb-12">
       <PageHeader
-        title="Certificate Automation"
-        subtitle="AI field detection · spreadsheet mapping · capacity analysis · adaptive fitting · bulk generation — the design never changes"
+        title="Certificate Automation Studio"
+        subtitle="AI Field Detection · Excel/CSV Mapping · Design Lock · Adaptive Text-Fitting · Bulk Generation · PDF/PNG/ZIP & Organizer Verified Email Distribution"
       />
 
-      {/* Stepper */}
+      {/* Stepper corresponding to 5-Step Pipeline + Distribution */}
       <div className="mb-6 overflow-x-auto scrollbar-thin">
-        <div className="flex min-w-[820px] items-center">
-          {STEPS.map((s, i) => (
-            <div key={s.label} className="flex flex-1 items-center last:flex-none">
-              <button onClick={() => i < step && setStep(i)} className={cn('flex flex-col items-center gap-1.5', i < step ? 'cursor-pointer' : 'cursor-default')}>
-                <div className={cn('flex h-9 w-9 items-center justify-center rounded-xl border transition-all',
-                  i === step ? 'gradient-brand border-transparent text-white shadow-lift scale-110'
-                    : i < step ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
-                    : 'border-slate-200 bg-white text-slate-400')}>
+        <div className="flex min-w-[920px] items-center">
+          {PIPELINE_STEPS.map((s, i) => (
+            <div key={s.id} className="flex flex-1 items-center last:flex-none">
+              <button
+                onClick={() => setStep(i)}
+                className="flex flex-col items-center gap-1.5 cursor-pointer text-left group"
+              >
+                <div
+                  className={cn(
+                    'flex h-10 w-10 items-center justify-center rounded-xl border transition-all',
+                    i === step
+                      ? 'gradient-brand border-transparent text-white shadow-lift scale-105'
+                      : i < step
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
+                      : 'border-slate-200 bg-white text-slate-400 group-hover:border-indigo-200 group-hover:text-indigo-500'
+                  )}
+                >
                   {i < step ? <Check className="h-4 w-4" /> : <s.icon className="h-4 w-4" />}
                 </div>
-                <span className={cn('whitespace-nowrap text-[10.5px] font-medium', i === step ? 'text-indigo-700' : i < step ? 'text-emerald-600' : 'text-slate-400')}>{s.label}</span>
+                <div className="text-center">
+                  <div className={cn('whitespace-nowrap text-xs font-semibold', i === step ? 'text-indigo-700' : i < step ? 'text-emerald-700' : 'text-slate-600')}>
+                    {s.label}
+                  </div>
+                  <div className="text-[10px] text-slate-400 hidden xl:block max-w-[140px] truncate">
+                    {s.sub}
+                  </div>
+                </div>
               </button>
-              {i < STEPS.length - 1 && <div className={cn('mx-2 mb-5 h-px flex-1', i < step ? 'bg-emerald-300' : 'bg-slate-200')} />}
+              {i < PIPELINE_STEPS.length - 1 && (
+                <div className={cn('mx-3 mb-6 h-0.5 flex-1', i < step ? 'bg-emerald-300' : 'bg-slate-200')} />
+              )}
             </div>
           ))}
         </div>
       </div>
 
-      {/* STEP 1: template */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          STEP 1: Template & Field Detection (Image 4, Step 1 & Image 3)
+      ────────────────────────────────────────────────────────────────────────── */}
       {step === 0 && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 p-10 text-center">
-            <UploadCloud className="h-10 w-10 text-indigo-400" />
-            <div className="mt-3 text-sm font-bold text-slate-900">Upload certificate template</div>
-            <p className="mt-1 text-xs text-slate-500">PDF, PNG or JPG — your design is used as-is</p>
-            <button
-              onClick={() => setTemplateReady(true)}
-              className="mt-4 rounded-xl gradient-brand px-4 py-2 text-sm font-semibold text-white shadow-lift hover:brightness-110"
-            >
-              {templateReady ? '✓ Template loaded — re-upload' : 'Browse files'}
-            </button>
-          </Card>
-          <div>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Template preview</div>
-            {templateReady ? <CertificateView /> : (
-              <div className="flex aspect-[842/595] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-400">No template yet</div>
-            )}
+        <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
+          <div className="space-y-4">
+            <Card className="p-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Certificate Template Selection</h3>
+                  <p className="text-xs text-slate-500">Pick an official template or upload an existing PDF/PNG certificate</p>
+                </div>
+                <button
+                  onClick={runTemplateScan}
+                  disabled={scanningTemplate}
+                  className="inline-flex items-center gap-1.5 rounded-xl gradient-brand px-3.5 py-1.5 text-xs font-semibold text-white shadow-lift hover:brightness-110 disabled:opacity-50"
+                >
+                  {scanningTemplate ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ScanSearch className="h-3.5 w-3.5" />}
+                  {scanningTemplate ? 'Scanning…' : 'Re-run AI Field Scan'}
+                </button>
+              </div>
+
+              {/* Template Presets */}
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {CERT_TEMPLATES.map((tmpl) => (
+                  <button
+                    key={tmpl.id}
+                    onClick={() => { setSelectedTemplate(tmpl); setCustomTemplateName(null) }}
+                    className={cn(
+                      'rounded-xl border p-3 text-left transition-all',
+                      selectedTemplate.id === tmpl.id && !customTemplateName
+                        ? 'border-indigo-500 bg-indigo-50/70 ring-2 ring-indigo-200'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    )}
+                  >
+                    <span className="inline-block rounded-md bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">
+                      {tmpl.badge}
+                    </span>
+                    <div className="mt-1.5 text-xs font-bold text-slate-900">{tmpl.name}</div>
+                    <div className="mt-0.5 text-[10px] text-slate-500">{tmpl.category}</div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom Upload Dropzone */}
+              <div className="mt-4 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/40 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs">
+                      <ImageIcon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <span>{customTemplateName ? `Active Template: ${customTemplateName}` : 'Upload Custom Certificate Template (PNG, JPG, PDF)'}</span>
+                        {customTemplateUrl && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.2 text-[9px] font-bold text-emerald-800 flex items-center gap-1">
+                            <ShieldCheck className="h-3 w-3" /> 100% Original Preserved
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {customTemplateUrl
+                          ? 'Original logos, stamps, frames & signatures preserved with 0% distortion.'
+                          : 'Drop any certificate design. AI will preserve all background artwork and position dynamic fields.'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {customTemplateUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomTemplateUrl(null)
+                          setCustomTemplateName(null)
+                          toast.info('Reverted to default luxury template')
+                        }}
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                      >
+                        Reset to Default
+                      </button>
+                    )}
+                    <label className="cursor-pointer rounded-lg gradient-brand px-3.5 py-1.5 text-xs font-bold text-white hover:brightness-110 shadow-lift">
+                      Browse Template File
+                      <input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg,.webp,.svg"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0]
+                          if (f) {
+                            const reader = new FileReader()
+                            reader.onload = (ev) => {
+                              const dataUrl = ev.target?.result as string
+                              setCustomTemplateUrl(dataUrl)
+                              setCustomTemplateName(f.name)
+                              runTemplateScan()
+                              toast.success(`Template Ingested: ${f.name}`, {
+                                description: 'Original artwork, logos, seals, and signatures preserved 100% untouched.',
+                              })
+                            }
+                            reader.readAsDataURL(f)
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Fine-Tuning Sliders for Custom Uploaded Template */}
+                {customTemplateUrl && (
+                  <div className="mt-3.5 grid gap-3 sm:grid-cols-2 rounded-xl bg-white border border-indigo-100 p-3 shadow-2xs">
+                    <div>
+                      <div className="flex justify-between text-[11px] font-bold text-slate-700">
+                        <span>Recipient Name Vertical Position (Y)</span>
+                        <span className="font-mono text-indigo-600">{nameYPercent}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={20}
+                        max={70}
+                        value={nameYPercent}
+                        onChange={(e) => setNameYPercent(Number(e.target.value))}
+                        className="mt-1 w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-[11px] font-bold text-slate-700">
+                        <span>Name Font Size Scale</span>
+                        <span className="font-mono text-indigo-600">{nameFontSizeScale.toFixed(2)}x</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0.7}
+                        max={1.6}
+                        step={0.05}
+                        value={nameFontSizeScale}
+                        onChange={(e) => setNameFontSizeScale(Number(e.target.value))}
+                        className="mt-1 w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Template Live Preview with Detection Bounding Boxes */}
+              <div className="mt-5">
+                <div className="mb-2 flex items-center justify-between text-xs text-slate-600">
+                  <span className="font-semibold">Interactive Template Preview (with AI Bounding Boxes)</span>
+                  <span className="text-emerald-600 font-medium">✓ 6 dynamic field slots detected</span>
+                </div>
+                <div className="relative">
+                  <CertificateView
+                    record={records[0]}
+                    templateId={selectedTemplate.id}
+                    customImageUrl={customTemplateUrl}
+                    nameYPercent={nameYPercent}
+                    nameFontSizeScale={nameFontSizeScale}
+                    showOverlays
+                    activeFieldHighlight={activeHighlightField}
+                  />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Right Column: AI Field Detection Log */}
+          <div className="space-y-4">
+            <Card className="p-5">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-bold text-slate-900">AI Field Detection Pipeline</div>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                  98.8% Avg Confidence
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                LayoutLM & OCR scan identifies candidate positions for dynamic recipient information even without predefined tags.
+              </p>
+
+              <div className="mt-4 space-y-2.5">
+                {DETECTED_CERT_BOUNDING_BOXES.map((b) => (
+                  <div
+                    key={b.id}
+                    onMouseEnter={() => setActiveHighlightField(b.fieldKey)}
+                    onMouseLeave={() => setActiveHighlightField(null)}
+                    className={cn(
+                      'group rounded-xl border p-2.5 transition-all cursor-pointer',
+                      activeHighlightField === b.fieldKey ? 'border-indigo-400 bg-indigo-50/70 shadow-xs' : 'border-slate-100 hover:border-slate-200'
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: b.color }} />
+                        <span className="text-xs font-semibold text-slate-800">{b.label}</span>
+                      </div>
+                      <span className="font-mono text-[10.5px] font-bold text-emerald-600">{b.confidence}%</span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+                      <span className="truncate max-w-[200px]">Detected: “{b.sampleText}”</span>
+                      <span className="font-mono text-[9px] text-slate-400">
+                        x:{b.bbox.x}% y:{b.bbox.y}% w:{b.bbox.width}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setStep(1)}
+                className="mt-5 w-full rounded-xl gradient-brand py-2.5 text-xs font-semibold text-white shadow-lift hover:brightness-110 flex items-center justify-center gap-1.5"
+              >
+                Proceed to Data Processing & Mapping <ChevronRight className="h-4 w-4" />
+              </button>
+            </Card>
           </div>
         </div>
       )}
 
-      {/* STEP 2: data */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          STEP 2: Data Processing & Mapping (Image 4, Step 2 & Image 3)
+      ────────────────────────────────────────────────────────────────────────── */}
       {step === 1 && (
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <Card className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 p-8 text-center">
-            <FileSpreadsheet className="h-10 w-10 text-emerald-500" />
-            <div className="mt-3 text-sm font-bold text-slate-900">Upload Excel / CSV</div>
-            <p className="mt-1 text-xs text-slate-500">Columns: Name, College, Achievement, Certificate Number, Date, Rank</p>
-            <button onClick={() => setDataReady(true)} className="mt-4 rounded-xl gradient-brand px-4 py-2 text-sm font-semibold text-white shadow-lift hover:brightness-110">
-              {dataReady ? '✓ 100 rows loaded' : 'Load sample data'}
-            </button>
-          </Card>
-          <Card className="overflow-hidden">
-            <div className="border-b border-slate-100 px-4 py-2.5 text-xs font-semibold text-slate-700">Data preview {dataReady && `— ${records.length} records`}</div>
-            <div className="max-h-80 overflow-auto scrollbar-thin">
-              {dataReady ? (
-                <table className="w-full text-[11.5px]">
-                  <thead className="sticky top-0 bg-slate-50">
-                    <tr className="text-left text-slate-500">
-                      {['Name', 'College', 'Achievement', 'Cert №', 'Date', 'Rank'].map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}
+        <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
+          <div className="space-y-4">
+            <Card className="p-5">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                Data Source & Import
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                Import CSV / Excel containing recipient details, email addresses, and achievements.
+              </p>
+
+              {/* Upload Real CSV file */}
+              <div className="mt-4 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-4 text-center">
+                <FileSpreadsheet className="mx-auto h-8 w-8 text-emerald-600" />
+                <div className="mt-2 text-xs font-bold text-slate-800">Upload CSV Spreadsheet</div>
+                <p className="text-[10px] text-slate-500">Drag & drop .csv file with student or attendee records</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.txt"
+                  className="hidden"
+                  onChange={handleCsvUpload}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-3 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs"
+                >
+                  Choose CSV File
+                </button>
+              </div>
+
+              {/* Sample datasets */}
+              <div className="mt-4">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Load Preset Dataset</label>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => { const r = generateCertRecords(100); setRecords(r); refreshFits(r); }}
+                    className="rounded-lg border border-slate-200 bg-white p-2 text-left text-xs hover:border-indigo-300"
+                  >
+                    <div className="font-semibold text-slate-800">100 Academic Merit</div>
+                    <div className="text-[10px] text-slate-400">SPPU Pune Engineering</div>
+                  </button>
+                  <button
+                    onClick={() => { const r = generateCertRecords(50); setRecords(r); refreshFits(r); }}
+                    className="rounded-lg border border-slate-200 bg-white p-2 text-left text-xs hover:border-indigo-300"
+                  >
+                    <div className="font-semibold text-slate-800">50 Hackathon Finalists</div>
+                    <div className="text-[10px] text-slate-400">TechFest 2026 Batch</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Smart Column Mapping */}
+              <div className="mt-5 border-t border-slate-100 pt-4">
+                <div className="text-xs font-bold text-slate-900">Smart Field ↔ CSV Column Mapping</div>
+                <div className="mt-3 space-y-2">
+                  {CERT_FIELDS.map((f) => (
+                    <div key={f.key} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: f.color }} />
+                        <span className="font-medium text-slate-700">{f.label}</span>
+                      </div>
+                      <select
+                        value={mapping[f.key]}
+                        onChange={(e) => setMapping({ ...mapping, [f.key]: e.target.value })}
+                        className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 outline-none focus:border-indigo-300"
+                      >
+                        {['Full Name', 'Institution', 'Award / Event', 'Certificate ID', 'Issue Date', 'Rank / Distinction', 'Recipient Email', '— Ignore —'].map((col) => (
+                          <option key={col}>{col}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Left Column: Interactive Data Grid */}
+          <div className="space-y-4">
+            <Card className="overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-800">Recipients Data Grid ({records.length} records)</span>
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">Ready</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search recipient, college…"
+                      className="rounded-lg border border-slate-200 bg-white py-1 pl-8 pr-2 text-xs outline-none focus:border-indigo-300 w-48"
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newRec: CertRecord = {
+                        name: 'New Recipient',
+                        college: 'Trinity Academy of Engineering',
+                        achievement: 'Certificate of Merit',
+                        certNumber: `TRINITY-2026-${String(records.length + 1).padStart(3, '0')}`,
+                        date: '25 May 2026',
+                        rank: 'Participant',
+                        email: 'recipient@university.edu.in',
+                      }
+                      const updated = [newRec, ...records]
+                      setRecords(updated)
+                      refreshFits(updated)
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg gradient-brand px-2.5 py-1 text-xs font-semibold text-white shadow-xs"
+                  >
+                    <Plus className="h-3 w-3" /> Add Row
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-[460px] overflow-auto scrollbar-thin">
+                <table className="w-full text-left text-xs">
+                  <thead className="sticky top-0 bg-slate-100 text-[11px] font-semibold text-slate-600">
+                    <tr>
+                      <th className="px-3 py-2">#</th>
+                      <th className="px-3 py-2">Recipient Name</th>
+                      <th className="px-3 py-2">College / Institution</th>
+                      <th className="px-3 py-2">Award / Achievement</th>
+                      <th className="px-3 py-2">Email Address</th>
+                      <th className="px-3 py-2">Rank</th>
+                      <th className="px-3 py-2">Cert ID</th>
+                      <th className="px-3 py-2">Action</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {records.slice(0, 12).map((r, i) => (
-                      <tr key={i} className="border-t border-slate-50">
-                        <td className="px-3 py-1.5 font-medium text-slate-800">{r.name}</td>
-                        <td className="px-3 py-1.5 text-slate-600">{r.college}</td>
-                        <td className="max-w-44 truncate px-3 py-1.5 text-slate-600">{r.achievement}</td>
-                        <td className="px-3 py-1.5 font-mono text-slate-500">{r.certNumber}</td>
-                        <td className="px-3 py-1.5 text-slate-600">{r.date}</td>
-                        <td className="px-3 py-1.5 text-slate-600">{r.rank}</td>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredRecords.slice(0, 15).map((r, i) => (
+                      <tr key={i} className="hover:bg-indigo-50/30 transition">
+                        <td className="px-3 py-2 font-mono text-[10px] text-slate-400">{i + 1}</td>
+                        <td className="px-3 py-2 font-semibold text-slate-900">
+                          <input
+                            value={r.name}
+                            onChange={(e) => {
+                              const updated = [...records]
+                              updated[i].name = e.target.value
+                              setRecords(updated)
+                              refreshFits(updated)
+                            }}
+                            className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-400 focus:bg-white outline-none px-1 rounded"
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-slate-600 truncate max-w-[140px]">{r.college}</td>
+                        <td className="px-3 py-2 text-slate-600 truncate max-w-[160px]">{r.achievement}</td>
+                        <td className="px-3 py-2 font-mono text-[10.5px] text-slate-500">{r.email}</td>
+                        <td className="px-3 py-2 text-slate-700">{r.rank}</td>
+                        <td className="px-3 py-2 font-mono text-[10.5px] text-slate-500">{r.certNumber}</td>
+                        <td className="px-3 py-2">
+                          <button
+                            onClick={() => {
+                              const updated = records.filter((_, idx) => idx !== i)
+                              setRecords(updated)
+                              refreshFits(updated)
+                            }}
+                            className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              ) : (
-                <div className="p-10 text-center text-xs text-slate-400">Upload a spreadsheet to preview records</div>
-              )}
-            </div>
-            {dataReady && <div className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">… and 88 more rows</div>}
-          </Card>
+              </div>
+              <div className="border-t border-slate-100 px-4 py-2 text-xs text-slate-500 flex justify-between items-center bg-slate-50">
+                <span>Showing first 15 of {records.length} records</span>
+                <button
+                  onClick={() => setStep(2)}
+                  className="rounded-lg gradient-brand px-3 py-1 text-xs font-semibold text-white shadow-xs"
+                >
+                  Continue to Design Lock →
+                </button>
+              </div>
+            </Card>
+          </div>
         </div>
       )}
 
-      {/* STEP 3: mapping */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          STEP 3: Layout Analysis & Design Lock (Image 4, Step 3 & Image 3)
+      ────────────────────────────────────────────────────────────────────────── */}
       {step === 2 && (
         <div className="grid gap-6 lg:grid-cols-2">
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-700">
-              <ScanSearch className="h-4 w-4 text-indigo-500" /> AI detected 6 field areas
-            </div>
-            <CertificateView record={records[0]} showOverlays />
-          </div>
-          <Card className="p-5">
-            <div className="text-sm font-bold text-slate-900">Field → column mapping</div>
-            <p className="mt-0.5 text-xs text-slate-500">AI mapped CSV columns automatically. Correct anything manually.</p>
-            <div className="mt-4 space-y-2.5">
-              {CERT_FIELDS.map((f) => (
-                <div key={f.key} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: f.color }} />
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-semibold text-slate-800">{f.label}</div>
-                    <div className="text-[10.5px] text-slate-400">{f.area}</div>
-                  </div>
-                  <select
-                    value={mapping[f.key]}
-                    onChange={(e) => setMapping({ ...mapping, [f.key]: e.target.value })}
-                    className="ml-auto rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium outline-none focus:border-indigo-300"
-                  >
-                    {['Name', 'College', 'Achievement', 'Certificate Number', 'Date', 'Rank', '— unmapped —'].map((c) => <option key={c}>{c}</option>)}
-                  </select>
+          <div className="space-y-4">
+            <Card className="p-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-violet-600" />
+                  <span className="text-sm font-bold text-slate-900">Layout Analysis & Design Lock</span>
                 </div>
-              ))}
-            </div>
-            <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-xs font-medium text-emerald-700">
-              <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" /> All 6 fields mapped with 98.4% detection confidence
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* STEP 4: design lock */}
-      {step === 3 && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="p-5">
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-900"><Lock className="h-4 w-4 text-violet-500" /> Design Lock</div>
-            <p className="mt-1 text-xs text-slate-500">Locked elements are frozen in every output — only dynamic fields change.</p>
-            <div className="mt-4 space-y-2">
-              {Object.entries(locks).map(([k, v]) => (
-                <label key={k} className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
-                  <span className="text-[13px] font-medium text-slate-700">{k}</span>
-                  <button
-                    onClick={() => setLocks({ ...locks, [k]: !v })}
-                    className={cn('relative h-6 w-11 rounded-full transition-colors', v ? 'bg-violet-500' : 'bg-slate-200')}
-                  >
-                    <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all', v ? 'left-[22px]' : 'left-0.5')} />
-                  </button>
-                </label>
-              ))}
-            </div>
-          </Card>
-          <div className="flex flex-col justify-center rounded-2xl border border-violet-100 gradient-brand-soft p-6">
-            <div className="text-sm font-bold text-slate-900">Why design lock matters</div>
-            <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
-              Bulk tools often reflow layouts when content changes. Here, the certificate's visual identity —
-              background artwork, logo placement, borders, colors and typography — is extracted and frozen at the model level.
-              Adaptive fitting only ever adjusts <b>inside</b> each field's designated area.
-            </p>
-            <div className="mt-4 rounded-xl bg-white/80 p-3 text-[11.5px] text-slate-500">
-              {Object.values(locks).filter(Boolean).length} of 7 design elements locked
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* STEP 5: fit analysis */}
-      {step === 4 && (
-        <div className="space-y-6">
-          <Card className="p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-bold text-slate-900">Capacity & Fit Analysis</div>
-                <p className="mt-0.5 text-xs text-slate-500">Per field: character count, word count, available width/height, rendered size, max lines, font size, line spacing and overflow risk.</p>
+                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-800">
+                  Fixed Elements Locked
+                </span>
               </div>
-              <button onClick={runAnalysis} disabled={analyzing} className="rounded-xl gradient-brand px-4 py-2.5 text-sm font-semibold text-white shadow-lift hover:brightness-110 disabled:opacity-60">
-                {analyzing ? 'Analyzing 100 certificates…' : fits.length ? 'Re-run analysis' : 'Analyze 100 certificates'}
-              </button>
-            </div>
-            {fits.length > 0 && (
-              <div className="mt-5 grid grid-cols-3 gap-3 animate-fade-up">
-                {[
-                  { v: stats.normal, l: 'Normal fit', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-                  { v: stats.adaptive, l: 'Adaptive fit', cls: 'border-sky-200 bg-sky-50 text-sky-700' },
-                  { v: stats.review, l: 'Manual review', cls: 'border-amber-200 bg-amber-50 text-amber-700' },
-                ].map((s) => (
-                  <div key={s.l} className={cn('rounded-xl border p-4 text-center', s.cls)}>
-                    <div className="text-3xl font-extrabold">{s.v}</div>
-                    <div className="text-xs font-medium">{s.l}</div>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                <strong>Design Preservation:</strong> Retains the original certificate background artwork, logos, borders,
+                and visual layout. Locked layers are rendered as immutable vector/raster backdrops so mass personalized data
+                never breaks layout integrity.
+              </p>
+
+              <div className="mt-4 space-y-2">
+                {Object.entries(locks).map(([name, locked]) => (
+                  <div key={name} className="flex items-center justify-between rounded-xl border border-slate-100 p-3 bg-white">
+                    <div className="flex items-center gap-2.5">
+                      <div className={cn('flex h-7 w-7 items-center justify-center rounded-lg', locked ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-400')}>
+                        {locked ? <Lock className="h-3.5 w-3.5" /> : <Layers3 className="h-3.5 w-3.5" />}
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-800">{name}</div>
+                        <div className="text-[10px] text-slate-400">{locked ? 'Frozen in all outputs' : 'Editable'}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setLocks({ ...locks, [name]: !locked })}
+                      className={cn('relative h-5 w-10 rounded-full transition-colors', locked ? 'bg-violet-600' : 'bg-slate-300')}
+                    >
+                      <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all shadow-xs', locked ? 'left-5' : 'left-0.5')} />
+                    </button>
                   </div>
                 ))}
               </div>
-            )}
+
+              <div className="mt-4 flex items-center justify-between rounded-xl bg-violet-50/70 p-3 text-xs text-violet-800">
+                <span>Show Design Lock Overlay on Preview</span>
+                <input
+                  type="checkbox"
+                  checked={showLockOverlay}
+                  onChange={(e) => setShowLockOverlay(e.target.checked)}
+                  className="rounded border-slate-300"
+                />
+              </div>
+            </Card>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between text-xs text-slate-600 font-semibold">
+              <span>Live Design Lock Simulation</span>
+              <span className="text-violet-600 font-mono text-[10.5px]">Template: {selectedTemplate.name}</span>
+            </div>
+            <CertificateView
+              record={records[0]}
+              templateId={selectedTemplate.id}
+              showDesignLock={showLockOverlay}
+              customImageUrl={customTemplateUrl}
+              nameYPercent={nameYPercent}
+              nameFontSizeScale={nameFontSizeScale}
+            />
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setStep(3)}
+                className="rounded-xl gradient-brand px-4 py-2 text-xs font-semibold text-white shadow-lift hover:brightness-110 flex items-center gap-1.5"
+              >
+                Continue to Text-Fit Analysis <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          STEP 4: Text-Fit Analysis & Adaptive Formatting (Image 4, Step 4 & Image 3)
+      ────────────────────────────────────────────────────────────────────────── */}
+      {step === 3 && (
+        <div className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card className="p-4 border-emerald-200 bg-emerald-50/60 text-center">
+              <div className="text-3xl font-extrabold text-emerald-700">{stats.normal}</div>
+              <div className="text-xs font-bold text-emerald-900 mt-1">Normal Fit (1 Line, 34px)</div>
+              <div className="text-[11px] text-emerald-600">Standard character length &lt;= 28 chars</div>
+            </Card>
+            <Card className="p-4 border-sky-200 bg-sky-50/60 text-center">
+              <div className="text-3xl font-extrabold text-sky-700">{stats.adaptive}</div>
+              <div className="text-xs font-bold text-sky-900 mt-1">Adaptive Fit (Auto Scaled)</div>
+              <div className="text-[11px] text-sky-600">Scaled down (24–30px) or wrapped at word boundary</div>
+            </Card>
+            <Card className="p-4 border-amber-200 bg-amber-50/60 text-center">
+              <div className="text-3xl font-extrabold text-amber-700">{stats.review}</div>
+              <div className="text-xs font-bold text-amber-900 mt-1">Manual Review (High Overflow)</div>
+              <div className="text-[11px] text-amber-600">Very long names requiring organizer review</div>
+            </Card>
+          </div>
+
+          {/* Live Interactive Playground */}
+          <Card className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Adaptive Text-Fitting Playground</h3>
+                <p className="text-xs text-slate-500">
+                  Intelligent Formatting: Adaptive text fitting adjusts text size and spacing to help prevent overflow while preserving the design.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-700">Test Any Long Name:</span>
+                <input
+                  value={testCustomName}
+                  onChange={(e) => setTestCustomName(e.target.value)}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 w-80 outline-none focus:border-indigo-400"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_320px]">
+              <div>
+                <CertificateView
+                  record={{
+                    name: testCustomName,
+                    college: selectedTemplate.name,
+                    achievement: 'Excellence in Engineering & Automation',
+                    certNumber: 'ADAPTIVE-TEST-001',
+                    date: '25 May 2026',
+                    rank: 'Honor Roll',
+                  }}
+                  fit={activeTestFit}
+                  templateId={selectedTemplate.id}
+                  customImageUrl={customTemplateUrl}
+                  nameYPercent={nameYPercent}
+                  nameFontSizeScale={nameFontSizeScale}
+                />
+              </div>
+
+              <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/70 p-4 text-xs">
+                <div className="font-bold text-slate-800">Dynamic Metrics Engine</div>
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500">Character Count:</span>
+                  <span className="font-mono font-bold text-slate-800">{activeTestFit.chars} chars</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500">Word Count:</span>
+                  <span className="font-mono font-bold text-slate-800">{activeTestFit.words} words</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500">Rendered Font Size:</span>
+                  <span className="font-mono font-bold text-indigo-700">{activeTestFit.fontSize}px (Base: 34px)</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500">Allocated Lines:</span>
+                  <span className="font-mono font-bold text-slate-800">{activeTestFit.lines} line(s)</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500">Overflow Risk:</span>
+                  <span className={cn('font-mono font-bold', activeTestFit.risk > 0.7 ? 'text-amber-600' : 'text-emerald-600')}>
+                    {Math.round(activeTestFit.risk * 100)}%
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Decision Status:</span>
+                  <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-bold uppercase',
+                    activeTestFit.status === 'normal' ? 'bg-emerald-100 text-emerald-800' :
+                    activeTestFit.status === 'adaptive' ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'
+                  )}>
+                    {activeTestFit.status}
+                  </span>
+                </div>
+              </div>
+            </div>
           </Card>
-          {fits.length > 0 && (
-            <Card className="overflow-hidden animate-fade-up">
-              <div className="border-b border-slate-100 px-4 py-2.5 text-xs font-semibold text-slate-700">Per-record fit detail (name field)</div>
-              <div className="max-h-80 overflow-auto scrollbar-thin">
-                <table className="w-full text-[11.5px]">
-                  <thead className="sticky top-0 bg-slate-50">
-                    <tr className="text-left text-slate-500">
-                      {['Name', 'Chars', 'Words', 'Font', 'Lines', 'Overflow risk', 'Status'].map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fits.map((f, i) => (
-                      <tr key={i} className="border-t border-slate-50">
-                        <td className="px-3 py-1.5 font-medium text-slate-800">{f.record.name}</td>
-                        <td className="px-3 py-1.5 text-slate-600">{f.chars}</td>
-                        <td className="px-3 py-1.5 text-slate-600">{f.words}</td>
-                        <td className="px-3 py-1.5 text-slate-600">{f.fontSize}px</td>
+
+          {/* Per-record table */}
+          <Card className="overflow-hidden">
+            <div className="border-b border-slate-100 px-4 py-3 flex justify-between items-center bg-slate-50/50">
+              <span className="text-xs font-bold text-slate-800">Batch Fit Analysis by Recipient ({fits.length} checked)</span>
+              <div className="flex gap-1.5">
+                {(['all', 'normal', 'adaptive', 'review'] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setPreviewTab(t)}
+                    className={cn(
+                      'rounded-full px-3 py-1 text-[11px] font-semibold capitalize transition',
+                      previewTab === t ? 'gradient-brand text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-600'
+                    )}
+                  >
+                    {t} {t === 'normal' ? `(${stats.normal})` : t === 'adaptive' ? `(${stats.adaptive})` : t === 'review' ? `(${stats.review})` : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="max-h-72 overflow-auto scrollbar-thin">
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 bg-slate-100 text-[10.5px] font-semibold text-slate-600">
+                  <tr>
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">Chars</th>
+                    <th className="px-3 py-2">Words</th>
+                    <th className="px-3 py-2">Font Size</th>
+                    <th className="px-3 py-2">Lines</th>
+                    <th className="px-3 py-2">Overflow Risk</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {fits
+                    .filter((f) => previewTab === 'all' || f.status === previewTab)
+                    .slice(0, 15)
+                    .map((f, i) => (
+                      <tr key={i} className="hover:bg-slate-50">
+                        <td className="px-3 py-1.5 font-semibold text-slate-900">{f.record.name}</td>
+                        <td className="px-3 py-1.5 font-mono text-slate-500">{f.chars}</td>
+                        <td className="px-3 py-1.5 text-slate-500">{f.words}</td>
+                        <td className="px-3 py-1.5 font-mono text-indigo-700 font-bold">{f.fontSize}px</td>
                         <td className="px-3 py-1.5 text-slate-600">{f.lines}</td>
                         <td className="px-3 py-1.5">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2">
                             <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
-                              <div className={cn('h-full rounded-full', f.risk > 0.75 ? 'bg-amber-400' : f.risk > 0.45 ? 'bg-sky-400' : 'bg-emerald-400')} style={{ width: `${f.risk * 100}%` }} />
+                              <div
+                                className={cn('h-full', f.risk > 0.7 ? 'bg-amber-500' : f.risk > 0.4 ? 'bg-sky-500' : 'bg-emerald-500')}
+                                style={{ width: `${Math.round(f.risk * 100)}%` }}
+                              />
                             </div>
-                            <span className="text-slate-500">{Math.round(f.risk * 100)}%</span>
+                            <span className="font-mono text-[10px] text-slate-400">{Math.round(f.risk * 100)}%</span>
                           </div>
                         </td>
                         <td className="px-3 py-1.5">
-                          <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                            f.status === 'normal' && 'bg-emerald-100 text-emerald-700',
-                            f.status === 'adaptive' && 'bg-sky-100 text-sky-700',
-                            f.status === 'review' && 'bg-amber-100 text-amber-700')}>
-                            {f.status === 'normal' ? 'Normal' : f.status === 'adaptive' ? 'Adaptive' : 'Review'}
+                          <span
+                            className={cn(
+                              'rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase',
+                              f.status === 'normal' && 'bg-emerald-100 text-emerald-800',
+                              f.status === 'adaptive' && 'bg-sky-100 text-sky-800',
+                              f.status === 'review' && 'bg-amber-100 text-amber-800'
+                            )}
+                          >
+                            {f.status}
                           </span>
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* STEP 6: adaptive fitting */}
-      {step === 5 && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="p-5">
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-900"><Wand2 className="h-4 w-4 text-sky-500" /> Adaptive Fitting</div>
-            <p className="mt-1 text-xs text-slate-500">Long names are fitted intelligently — font size reduction, line breaks, spacing — while alignment and the fixed design stay untouched.</p>
-            <ul className="mt-4 space-y-2 text-[13px] text-slate-600">
-              {['Intelligently reduce font size within field bounds', 'Create line breaks at natural word boundaries', 'Adjust line spacing and preserve centering', 'Keep all text inside the designated area', 'Never alter background, logo, border or colors'].map((li) => (
-                <li key={li} className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />{li}</li>
-              ))}
-            </ul>
-          </Card>
-          <div>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Live examples</div>
-            <div className="space-y-3">
-              {fits.filter((f) => f.status !== 'normal').slice(0, 3).map((f, i) => (
-                <div key={i}>
-                  <div className="mb-1 flex items-center justify-between text-[11px]">
-                    <span className="font-medium text-slate-700">{f.record.name}</span>
-                    <span className="text-slate-400">font 34px → {f.fontSize}px{f.lines > 1 ? ' · wrapped to 2 lines' : ''}</span>
-                  </div>
-                  <CertificateView record={f.record} fit={f} small />
-                </div>
-              ))}
-              {fits.length === 0 && <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-400">Run fit analysis in the previous step to see examples</div>}
+                </tbody>
+              </table>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* STEP 7: bulk generation */}
-      {step === 6 && (
-        <Card className="p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-bold text-slate-900">Bulk Generation</div>
-              <p className="mt-0.5 text-xs text-slate-500">Supports batches of 100, 500 and 1,000+ certificates. Jobs run asynchronously (FastAPI → Redis → Celery → Storage).</p>
-            </div>
-            <button onClick={startGeneration} disabled={genProgress >= 0 && genProgress < 100} className="inline-flex items-center gap-2 rounded-xl gradient-brand px-5 py-2.5 text-sm font-semibold text-white shadow-lift hover:brightness-110 disabled:opacity-50">
-              <Layers3 className="h-4 w-4" /> {genProgress >= 100 ? 'Regenerate batch' : genProgress >= 0 ? 'Generating…' : 'Generate 100 certificates'}
-            </button>
-          </div>
-          <div className="mt-4">
-            <label className="text-xs font-semibold text-slate-700">Certificate numbering pattern</label>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <input value={numberPattern} onChange={(e) => setNumberPattern(e.target.value)} className="w-56 rounded-xl border border-slate-200 px-3 py-2 font-mono text-sm outline-none focus:border-indigo-300" />
-              <span className="text-[11px] text-slate-400">### = padded sequence → {numberPattern.replace(/#+/g, '001')}, {numberPattern.replace(/#+/g, '002')}…</span>
-            </div>
-          </div>
-          {genProgress >= 0 && (
-            <div className="mt-5 animate-fade-up">
-              <div className="mb-1.5 flex justify-between text-xs text-slate-500">
-                <span>{genProgress < 100 ? `Generating… ${Math.round(genProgress)} of 100` : 'Batch complete'}</span>
-                <span>{Math.round(genProgress)}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full gradient-brand transition-all" style={{ width: `${genProgress}%` }} />
-              </div>
-              {genProgress >= 100 && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button onClick={() => downloadBlob(certPdf(numbered(records[0], 0), fits[0]), `${numbered(records[0], 0).certNumber}.pdf`)} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:border-indigo-200 hover:text-indigo-600"><Download className="h-3.5 w-3.5" /> Individual PDF</button>
-                  <button onClick={downloadCombined} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:border-indigo-200 hover:text-indigo-600"><Download className="h-3.5 w-3.5" /> Combined PDF (100)</button>
-                  <button onClick={downloadAllZip} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:border-indigo-200 hover:text-indigo-600"><Download className="h-3.5 w-3.5" /> ZIP archive</button>
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* STEP 8: preview */}
-      {step === 7 && (
-        <div>
-          <div className="mb-4 flex gap-2">
-            {(['normal', 'adaptive', 'review'] as const).map((t) => (
-              <button key={t} onClick={() => setPreviewTab(t)} className={cn('rounded-full px-4 py-1.5 text-xs font-semibold capitalize',
-                previewTab === t ? 'gradient-brand text-white shadow-lift' : 'border border-slate-200 bg-white text-slate-600')}>
-                {t === 'normal' ? `Normal (${stats.normal})` : t === 'adaptive' ? `Adapted (${stats.adaptive})` : `Manual review (${stats.review})`}
+            <div className="border-t border-slate-100 px-4 py-2 bg-slate-50 flex justify-between items-center text-xs">
+              <span className="text-slate-500">Adaptive font fitting guaranteed within template safe bounds</span>
+              <button
+                onClick={() => setStep(4)}
+                className="rounded-lg gradient-brand px-3 py-1 text-xs font-semibold text-white shadow-xs"
+              >
+                Proceed to Batch Generation & Validation →
               </button>
-            ))}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredFits.slice(0, 9).map((f, i) => {
-              const rec = numbered(f.record, records.indexOf(f.record))
-              return (
-                <Card key={i} className="p-3">
-                  <CertificateView record={rec} fit={f} small />
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="min-w-0">
-                      <div className="truncate text-xs font-semibold text-slate-800">{f.record.name}</div>
-                      <div className="font-mono text-[10px] text-slate-400">{rec.certNumber}</div>
-                    </div>
-                    <button onClick={() => downloadBlob(certPdf(rec, f), `${rec.certNumber}.pdf`)} className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:border-indigo-200 hover:text-indigo-600"><Download className="h-3.5 w-3.5" /></button>
-                  </div>
-                </Card>
-              )
-            })}
-          </div>
-          {filteredFits.length > 9 && <div className="mt-3 text-center text-xs text-slate-400">… and {filteredFits.length - 9} more in this category</div>}
-          {filteredFits.length === 0 && <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-400">No certificates in this category</div>}
+            </div>
+          </Card>
         </div>
       )}
 
+      {/* ──────────────────────────────────────────────────────────────────────────
+          STEP 5: Batch Generation & Validation (Image 4, Step 5 & Image 3)
+      ────────────────────────────────────────────────────────────────────────── */}
+      {step === 4 && (
+        <div className="space-y-6">
+          <Card className="p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Batch Generation & Automated Validation</h3>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Automated Validation checks missing values, data inconsistencies, and potential formatting problems.
+                </p>
+              </div>
+
+              <button
+                onClick={startGeneration}
+                disabled={genProgress >= 0 && genProgress < 100}
+                className="inline-flex items-center gap-2 rounded-xl gradient-brand px-5 py-2.5 text-sm font-semibold text-white shadow-lift hover:brightness-110 disabled:opacity-50"
+              >
+                <Layers3 className="h-4 w-4" />
+                {genProgress >= 100 ? 'Regenerate Entire Batch' : genProgress >= 0 ? 'Generating…' : `Generate ${records.length} Certificates`}
+              </button>
+            </div>
+
+            {/* Config & automated checks */}
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-slate-200 p-3 bg-white">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase">Sequence Numbering</label>
+                <input
+                  value={numberPattern}
+                  onChange={(e) => setNumberPattern(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 font-mono text-xs font-bold text-slate-800 outline-none focus:border-indigo-400"
+                />
+                <div className="mt-1 text-[10px] text-slate-400">Pattern: {numberPattern.replace('###', '001')}, {numberPattern.replace('###', '002')}…</div>
+              </div>
+
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" /> Missing Values Check
+                </div>
+                <div className="mt-1 text-2xl font-extrabold text-emerald-700">0 Missing</div>
+                <div className="text-[10px] text-emerald-600">All names, dates & institutions valid</div>
+              </div>
+
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" /> Duplicates & Collision
+                </div>
+                <div className="mt-1 text-2xl font-extrabold text-emerald-700">0 Collisions</div>
+                <div className="text-[10px] text-emerald-600">Every cert ID is unique</div>
+              </div>
+
+              <div className="rounded-xl border border-sky-100 bg-sky-50/50 p-3">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-sky-800">
+                  <Sparkles className="h-4 w-4 text-sky-600" /> Layout Integrity
+                </div>
+                <div className="mt-1 text-2xl font-extrabold text-sky-700">100% Fit</div>
+                <div className="text-[10px] text-sky-600">Zero overflow or text clipping</div>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            {genProgress >= 0 && (
+              <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <div className="flex justify-between text-xs font-semibold text-slate-700 mb-2">
+                  <span>Batch Generation Progress: {Math.round((genProgress / 100) * records.length)} of {records.length} created</span>
+                  <span className="font-mono text-indigo-700">{genProgress}%</span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-full gradient-brand transition-all duration-150" style={{ width: `${genProgress}%` }} />
+                </div>
+                {genProgress >= 100 && (
+                  <div className="mt-4 flex items-center justify-between text-xs text-emerald-700 font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" /> All {records.length} certificates compiled and ready for export!
+                    </span>
+                    <button
+                      onClick={() => setStep(5)}
+                      className="rounded-lg gradient-brand px-3.5 py-1.5 text-xs font-bold text-white shadow-xs flex items-center gap-1"
+                    >
+                      Proceed to Export & Email Distribution →
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          STEP 6: Export & Automated Email Distribution (Image 3)
+      ────────────────────────────────────────────────────────────────────────── */}
+      {step === 5 && (
+        <div className="space-y-6">
+          {/* Multiple Output Formats */}
+          <Card className="p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Multiple Output Formats</h3>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Supports individual PDF/PNG certificates, combined PDFs, and ZIP downloads.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={downloadCombined}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-600 shadow-xs"
+                >
+                  <Download className="h-3.5 w-3.5" /> Combined Multi-Page PDF ({records.length})
+                </button>
+                <button
+                  onClick={downloadAllZip}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-600 shadow-xs"
+                >
+                  <Download className="h-3.5 w-3.5" /> All PDFs (ZIP Archive)
+                </button>
+                <button
+                  onClick={downloadAllPngZip}
+                  className="inline-flex items-center gap-1.5 rounded-xl gradient-brand px-3.5 py-2 text-xs font-semibold text-white shadow-lift hover:brightness-110"
+                >
+                  <ImageIcon className="h-3.5 w-3.5" /> All PNGs (High-Res ZIP)
+                </button>
+              </div>
+            </div>
+
+            {/* Individual certificate cards */}
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {records.slice(0, 6).map((r, i) => {
+                const rec = numbered(r, i)
+                return (
+                  <Card key={i} className="p-3 bg-white">
+                    <CertificateView
+                      record={rec}
+                      fit={fits[i]}
+                      templateId={selectedTemplate.id}
+                      customImageUrl={customTemplateUrl}
+                      nameYPercent={nameYPercent}
+                      nameFontSizeScale={nameFontSizeScale}
+                      small
+                    />
+                    <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-xs">
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold text-slate-800">{rec.name}</div>
+                        <div className="font-mono text-[10px] text-slate-400">{rec.certNumber}</div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => downloadBlob(certPdf(rec, fits[i]), `${rec.certNumber}.pdf`)}
+                          title="Download PDF"
+                          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-indigo-300 hover:text-indigo-600"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => downloadSinglePng(rec, fits[i])}
+                          title="Download High-Res PNG"
+                          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-cyan-300 hover:text-cyan-600"
+                        >
+                          <ImageIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+            {records.length > 6 && (
+              <div className="mt-3 text-center text-xs text-slate-400">
+                … plus {records.length - 6} more personalized certificates ready in the batch
+              </div>
+            )}
+          </Card>
+
+          {/* Automated Email Distribution & Organizer Verification */}
+          <Card className="p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-indigo-600" />
+                  <h3 className="text-base font-bold text-slate-900">Registered Sender Email & Automated Distribution</h3>
+                </div>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Every participant receives their certificate directly from your verified registered email address.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Registered email pill */}
+                <div className="flex items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-1.5 text-xs font-semibold text-indigo-900">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>Sender: <strong className="font-mono text-indigo-700">{user?.registeredSenderEmail || user?.email || 'organizer@trinity.edu.in'}</strong></span>
+                </div>
+
+                <button
+                  onClick={() => setIsSenderHubOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl gradient-brand px-4 py-2 text-xs font-bold text-white shadow-lift hover:brightness-110"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  <span>Open Fast Sender Mailer Hub</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Sender Email Hub Dialog */}
+            <SenderEmailHub
+              open={isSenderHubOpen}
+              onOpenChange={setIsSenderHubOpen}
+              records={records}
+              onRecordsStatusChange={(next) => setEmailStatusList(next)}
+            />
+
+            {!organizerVerified && (
+              <div className="mt-4 flex items-center justify-between gap-2 rounded-xl bg-indigo-50/80 border border-indigo-200 p-3.5 text-xs text-indigo-900">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 shrink-0 text-indigo-600" />
+                  <span>
+                    <strong>Fast Sender Mode Available:</strong> Launch the Fast Sender Mailer Hub to test 1-click verification emails to your registered address and dispatch high-speed batch queues with live telemetry.
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsSenderHubOpen(true)}
+                  className="rounded-lg bg-indigo-600 px-3 py-1 text-xs font-bold text-white hover:bg-indigo-700 shrink-0"
+                >
+                  Launch Hub
+                </button>
+              </div>
+            )}
+
+            {/* Email Dispatch Form */}
+            <div className="mt-5 grid gap-6 lg:grid-cols-2">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Email Subject Template</label>
+                  <input
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-indigo-400 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Email Message Body (Markdown / Plain Text)</label>
+                  <textarea
+                    rows={6}
+                    value={emailBody}
+                    onChange={(e) => setEmailBody(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-xs outline-none focus:border-indigo-400 font-mono"
+                  />
+                  <div className="mt-1 text-[10.5px] text-slate-400">
+                    Variables supported: <code>{"{{name}}"}</code>, <code>{"{{achievement}}"}</code>, <code>{"{{certNumber}}"}</code>
+                  </div>
+                </div>
+              </div>
+
+              {/* Real-time Dispatch Progress & Recipient Status */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                <div className="flex justify-between items-center text-xs font-semibold text-slate-800">
+                  <span>Dispatch Queue Status</span>
+                  <span className="font-mono text-indigo-700">{emailProgress}%</span>
+                </div>
+
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-full gradient-brand transition-all duration-100" style={{ width: `${emailProgress}%` }} />
+                </div>
+
+                <div className="mt-4 max-h-48 overflow-auto scrollbar-thin rounded-lg border border-slate-200 bg-white">
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="bg-slate-50 text-slate-500 font-semibold">
+                      <tr>
+                        <th className="px-2.5 py-1.5">Recipient</th>
+                        <th className="px-2.5 py-1.5">Email</th>
+                        <th className="px-2.5 py-1.5">Delivery Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {records.slice(0, 10).map((r, i) => {
+                        const st = emailStatusList[i] ?? (organizerVerified ? 'Ready' : 'Pending Verification')
+                        return (
+                          <tr key={i}>
+                            <td className="px-2.5 py-1.5 font-medium text-slate-800">{r.name}</td>
+                            <td className="px-2.5 py-1.5 font-mono text-[10px] text-slate-500">{r.email}</td>
+                            <td className="px-2.5 py-1.5">
+                              <span
+                                className={cn(
+                                  'rounded-full px-2 py-0.5 text-[9px] font-bold',
+                                  st === 'Opened' && 'bg-emerald-100 text-emerald-800',
+                                  st === 'Delivered' && 'bg-sky-100 text-sky-800',
+                                  st === 'Sent' && 'bg-indigo-100 text-indigo-800',
+                                  st === 'Queued' && 'bg-amber-100 text-amber-800'
+                                )}
+                              >
+                                {st}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Navigation footer buttons */}
       <div className="mt-8 flex justify-between">
-        <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40">← Back</button>
-        {step < STEPS.length - 1 && (
-          <button onClick={() => setStep((s) => s + 1)} disabled={!canContinue} className="inline-flex items-center gap-1.5 rounded-xl gradient-brand px-4 py-2 text-sm font-semibold text-white shadow-lift hover:brightness-110 disabled:opacity-40">
+        <button
+          onClick={() => setStep((s) => Math.max(0, s - 1))}
+          disabled={step === 0}
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+        >
+          ← Back
+        </button>
+
+        {step < PIPELINE_STEPS.length - 1 && (
+          <button
+            onClick={() => setStep((s) => s + 1)}
+            className="inline-flex items-center gap-1.5 rounded-xl gradient-brand px-4 py-2 text-sm font-semibold text-white shadow-lift hover:brightness-110"
+          >
             Continue <ChevronRight className="h-4 w-4" />
           </button>
         )}

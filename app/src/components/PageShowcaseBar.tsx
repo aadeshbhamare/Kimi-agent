@@ -102,11 +102,11 @@ export const ALL_PAGES: PageInfo[] = [
   },
   {
     key: 'certificates',
-    label: 'Certificate Automation Pro',
-    shortLabel: 'Certificates Pro',
+    label: 'Certificate Automation Studio',
+    shortLabel: 'Certificates Studio',
     category: 'Core Platform',
     icon: Award,
-    desc: 'Bulk 1000+ certificate generator with smart field locking, QR/barcode, and CSV sync.',
+    desc: 'AI Field Detection · CSV Mapping · Design Lock · Adaptive Text-Fitting · Bulk PDF/PNG · Verified Email Dispatch.',
     route: '#/certificates',
   },
   // Workflow Steps (Separated)

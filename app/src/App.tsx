@@ -1,6 +1,8 @@
 import { AppProvider, useApp } from '@/lib/store'
+import { AuthProvider } from '@/lib/auth'
 import { AppShell } from '@/components/AppShell'
 import { PageShowcaseBar } from '@/components/PageShowcaseBar'
+import { Toaster } from 'sonner'
 import Landing from '@/pages/Landing'
 import Dashboard from '@/pages/Dashboard'
 import Documents from '@/pages/Documents'
@@ -12,6 +14,8 @@ import Projects from '@/pages/Projects'
 import Collaboration from '@/pages/Collaboration'
 import History from '@/pages/History'
 import Certificates from '@/pages/Certificates'
+import ExperimentalResults from '@/pages/ExperimentalResults'
+import Architecture from '@/pages/Architecture'
 
 function Router() {
   const { section } = useApp()
@@ -45,6 +49,8 @@ function Router() {
     collaboration: <Collaboration />,
     history: <History />,
     certificates: <Certificates />,
+    results: <ExperimentalResults />,
+    architecture: <Architecture />,
   }[section]
 
   return (
@@ -59,8 +65,11 @@ function Router() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <Router />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <Router />
+        <Toaster position="top-right" richColors />
+      </AppProvider>
+    </AuthProvider>
   )
 }
