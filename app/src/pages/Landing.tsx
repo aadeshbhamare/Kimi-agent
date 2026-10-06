@@ -9,7 +9,7 @@ import {
   ArrowRight, UploadCloud, BrainCircuit, MousePointerClick, Layers3, ShieldCheck,
   FileDown, Sparkles, Award, CheckCircle2, ChevronDown, FileText,
   Zap, Mail, Send, Lock, Image as ImageIcon, Flame, Check,
-  Fingerprint, Laptop, Database, Cpu, HardDrive, RefreshCw, KeyRound
+  Fingerprint, Laptop, Database, Cpu, HardDrive, RefreshCw, KeyRound, LogIn
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -66,7 +66,7 @@ export default function Landing() {
                   className="h-8 w-8 rounded-lg border border-slate-200 object-cover"
                 />
                 <button
-                  onClick={logout}
+                  onClick={() => { logout(); navigate('login') }}
                   className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                   title="Sign out"
                 >
@@ -76,13 +76,14 @@ export default function Landing() {
             ) : (
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => openAuth('signin')}
-                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:border-indigo-300 hover:text-indigo-600 shadow-xs"
+                  onClick={() => navigate('login')}
+                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:border-indigo-300 hover:text-indigo-600 shadow-xs flex items-center gap-1.5"
                 >
-                  Sign In
+                  <LogIn className="h-3.5 w-3.5 text-indigo-600" />
+                  <span>Sign In</span>
                 </button>
                 <button
-                  onClick={() => openAuth('signup')}
+                  onClick={() => navigate('login')}
                   className="rounded-xl gradient-brand px-4 py-2 text-xs font-bold text-white shadow-lift hover:brightness-110 flex items-center gap-1.5"
                 >
                   <Fingerprint className="h-3.5 w-3.5" />

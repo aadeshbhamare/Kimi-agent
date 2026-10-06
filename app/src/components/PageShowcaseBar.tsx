@@ -7,7 +7,7 @@ import {
   FolderKanban, Users, History as HistoryIcon, Award, UploadCloud,
   BrainCircuit, Boxes, MousePointerClick, Layers3, ShieldCheck,
   MonitorDown, Copy, Check, ChevronDown, ChevronUp, Grid3x3, X,
-  ArrowRight
+  ArrowRight, LogIn
 } from 'lucide-react'
 
 export interface PageInfo {
@@ -22,6 +22,15 @@ export interface PageInfo {
 
 export const ALL_PAGES: PageInfo[] = [
   // Marketing
+  {
+    key: 'login',
+    label: 'Sign In / Out Hub',
+    shortLabel: 'Sign In/Out',
+    category: 'Marketing',
+    icon: LogIn,
+    desc: 'Authentication portal with Google Sign-In, 6-digit OTP email verification, and animated title circle.',
+    route: '#/login',
+  },
   {
     key: 'landing',
     label: 'Landing Page',

@@ -38,6 +38,8 @@ interface AuthContextType {
   closeAuthModal: () => void
   setAuthModalTab: (tab: 'google' | 'signup' | 'signin' | 'otp') => void
   loginWithGoogle: (customGoogleAccount?: { name: string; email: string }) => Promise<User>
+  loginAsGuestDemo: () => Promise<User>
+  startEmailOtpLogin: (email: string) => { otp: string; expiresInSeconds: number }
   startEmailSignUp: (name: string, email: string, pass: string) => { otp: string; expiresInSeconds: number }
   verifyOtp: (enteredOtp: string) => boolean
   resendOtp: () => string | null
@@ -60,24 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
-    // Default demo authenticated organizer so user can immediately test sender email if they want
-    return {
-      id: 'usr_org_01',
-      name: 'Organizer Office',
-      email: 'organizer@trinity.edu.in',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
-      provider: 'google',
-      isVerified: true,
-      registeredSenderEmail: 'organizer@trinity.edu.in',
-      smtpConfig: {
-        host: 'smtp.gmail.com',
-        port: 587,
-        user: 'organizer@trinity.edu.in',
-        pass: '••••••••••••',
-        fromName: 'Academic Certification Office',
-        useTls: true,
-      },
-    }
+    return null
   })
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
@@ -146,6 +131,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     []
   )
+
+  // One-click Guest Demo Login
+  const loginAsGuestDemo = useCallback(async (): Promise<User> => {
+    const demoUser: User = {
+      id: 'usr_org_demo',
+      name: 'Organizer Office (Demo)',
+      email: 'organizer@trinity.edu.in',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+      provider: 'google',
+      isVerified: true,
+      registeredSenderEmail: 'organizer@trinity.edu.in',
+      smtpConfig: {
+        host: 'smtp.gmail.com',
+        port: 587,
+        user: 'organizer@trinity.edu.in',
+        pass: '••••••••••••',
+        fromName: 'Academic Certification Office',
+        useTls: true,
+      },
+    }
+    setUser(demoUser)
+    setIsAuthModalOpen(false)
+    return demoUser
+  }, [])
+
+  // Start direct Email OTP login (no password needed)
+  const startEmailOtpLogin = useCallback((email: string) => {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    const expiresAt = Date.now() + 10 * 60 * 1000
+    const rawName = email.split('@')[0].replace(/[._-]/g, ' ')
+    const name = rawName ? rawName.charAt(0).toUpperCase() + rawName.slice(1) : 'Academic Organizer'
+    const pending: PendingSignUp = { name, email, pass: '', otp, expiresAt }
+    setPendingSignUp(pending)
+    setAuthModalTab('otp')
+    return { otp, expiresInSeconds: 600 }
+  }, [])
 
   // Start Email Sign-Up -> generates 6-digit OTP
   const startEmailSignUp = useCallback((name: string, email: string, pass: string) => {
@@ -266,6 +287,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         closeAuthModal,
         setAuthModalTab,
         loginWithGoogle,
+        loginAsGuestDemo,
+        startEmailOtpLogin,
         startEmailSignUp,
         verifyOtp,
         resendOtp,

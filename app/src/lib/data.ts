@@ -3,7 +3,7 @@
 // is backed by PostgreSQL + FastAPI; the shapes below mirror that schema.
 
 export type SectionKey =
-  | 'landing' | 'dashboard' | 'documents' | 'workflow' | 'templates'
+  | 'login' | 'landing' | 'dashboard' | 'documents' | 'workflow' | 'templates'
   | 'research' | 'assistant' | 'projects' | 'collaboration'
   | 'history' | 'certificates' | 'results' | 'architecture'
   | 'workflow-upload' | 'workflow-analyze' | 'workflow-model'

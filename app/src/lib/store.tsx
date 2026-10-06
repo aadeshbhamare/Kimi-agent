@@ -11,6 +11,7 @@ interface AppState {
 const Ctx = createContext<AppState | null>(null)
 
 const VALID: SectionKey[] = [
+  'login',
   'landing',
   'dashboard',
   'documents',
@@ -35,7 +36,7 @@ const VALID: SectionKey[] = [
 
 function parseHash(): SectionKey {
   const h = window.location.hash.replace(/^#\/?/, '').split('?')[0] as SectionKey
-  return VALID.includes(h) ? h : 'landing'
+  return VALID.includes(h) ? h : 'login'
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -49,7 +50,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const navigate = useCallback((s: SectionKey) => {
-    window.location.hash = s === 'landing' ? '/' : `/${s}`
+    window.location.hash = s === 'login' ? '/login' : `/${s}`
     setSection(s)
     window.scrollTo({ top: 0 })
   }, [])

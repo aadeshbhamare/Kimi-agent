@@ -16,9 +16,21 @@ import History from '@/pages/History'
 import Certificates from '@/pages/Certificates'
 import ExperimentalResults from '@/pages/ExperimentalResults'
 import Architecture from '@/pages/Architecture'
+import Login from '@/pages/Login'
 
 function Router() {
   const { section } = useApp()
+
+  if (section === 'login') {
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-950">
+        <PageShowcaseBar />
+        <div className="flex-1">
+          <Login />
+        </div>
+      </div>
+    )
+  }
 
   if (section === 'landing') {
     return (
@@ -32,6 +44,7 @@ function Router() {
   }
 
   const page = {
+    login: <Login />,
     dashboard: <Dashboard />,
     documents: <Documents />,
     workflow: <Workflow initialStep={0} />,

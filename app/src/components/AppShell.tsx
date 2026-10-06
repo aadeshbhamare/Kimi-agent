@@ -359,7 +359,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <ShieldCheck className="h-3.5 w-3.5 text-sky-600" /> Verify New Email (OTP)
                       </button>
                       <button
-                        onClick={() => { logout(); setUserMenuOpen(false) }}
+                        onClick={() => { logout(); setUserMenuOpen(false); navigate('login') }}
                         className="w-full text-left rounded-lg px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 font-bold flex items-center gap-2"
                       >
                         <LogOut className="h-3.5 w-3.5" /> Log Out
@@ -370,7 +370,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             ) : (
               <button
-                onClick={() => openAuthModal('google')}
+                onClick={() => navigate('login')}
                 className="ml-1 inline-flex items-center gap-1.5 rounded-xl gradient-brand px-3 py-1.5 text-xs font-bold text-white shadow-lift hover:brightness-110"
               >
                 <LogIn className="h-3.5 w-3.5" />
