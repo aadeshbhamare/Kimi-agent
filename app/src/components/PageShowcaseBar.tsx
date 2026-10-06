@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '@/lib/store'
+import { useAuth } from '@/lib/auth'
 import type { SectionKey } from '@/lib/data'
 import { cn } from '@/lib/utils'
 import {
@@ -174,6 +175,15 @@ export const ALL_PAGES: PageInfo[] = [
     route: '#/workflow-validate',
   },
   {
+    key: 'admin',
+    label: 'Company Admin Command Center',
+    shortLabel: 'Company Admin',
+    category: 'Core Platform',
+    icon: ShieldCheck,
+    desc: 'Restricted company portal: DNS SPF/DKIM verification, SMTP relay, AI key vault, user directory, and cryptographic audit ledgers.',
+    route: '#/admin',
+  },
+  {
     key: 'workflow-export',
     label: 'Step 7: Preview & Export',
     shortLabel: '7. Multi-Export',
@@ -186,10 +196,16 @@ export const ALL_PAGES: PageInfo[] = [
 
 export function PageShowcaseBar() {
   const { section, navigate } = useApp()
+  const { isAdmin } = useAuth()
   const [collapsed, setCollapsed] = useState(true)
   const [directoryOpen, setDirectoryOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [activeCategory, setActiveCategory] = useState<'All' | 'Marketing' | 'Core Platform' | 'Workflow Steps'>('All')
+
+  // Completely invisible to standard users - only visible in Admin mode or for company admins
+  if (!isAdmin && section !== 'admin') {
+    return null
+  }
 
   const currentPage = ALL_PAGES.find((p) => {
     if (section === 'workflow') return p.key === 'workflow-upload'

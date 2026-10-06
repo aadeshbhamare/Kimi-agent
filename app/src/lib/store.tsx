@@ -32,6 +32,7 @@ const VALID: SectionKey[] = [
   'certificates',
   'results',
   'architecture',
+  'admin',
 ]
 
 function parseHash(): SectionKey {

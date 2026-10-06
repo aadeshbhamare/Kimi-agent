@@ -1,5 +1,5 @@
 import { AppProvider, useApp } from '@/lib/store'
-import { AuthProvider } from '@/lib/auth'
+import { AuthProvider, useAuth } from '@/lib/auth'
 import { AppShell } from '@/components/AppShell'
 import { PageShowcaseBar } from '@/components/PageShowcaseBar'
 import { Toaster } from 'sonner'
@@ -17,15 +17,17 @@ import Certificates from '@/pages/Certificates'
 import ExperimentalResults from '@/pages/ExperimentalResults'
 import Architecture from '@/pages/Architecture'
 import Login from '@/pages/Login'
+import Admin from '@/pages/Admin'
 
 function Router() {
   const { section } = useApp()
+  const { isAdmin } = useAuth()
 
   if (section === 'login') {
     return (
       <div className="min-h-screen bg-slate-950">
         <Login />
-        <PageShowcaseBar />
+        {isAdmin && <PageShowcaseBar />}
       </div>
     )
   }
@@ -34,6 +36,15 @@ function Router() {
     return (
       <div className="min-h-screen bg-white">
         <Landing />
+        {isAdmin && <PageShowcaseBar />}
+      </div>
+    )
+  }
+
+  if (section === 'admin') {
+    return (
+      <div className="min-h-screen bg-slate-950">
+        <Admin />
         <PageShowcaseBar />
       </div>
     )
@@ -60,12 +71,13 @@ function Router() {
     certificates: <Certificates />,
     results: <ExperimentalResults />,
     architecture: <Architecture />,
+    admin: <Admin />,
   }[section]
 
   return (
     <div className="h-screen overflow-hidden">
       <AppShell>{page}</AppShell>
-      <PageShowcaseBar />
+      {isAdmin && <PageShowcaseBar />}
     </div>
   )
 }

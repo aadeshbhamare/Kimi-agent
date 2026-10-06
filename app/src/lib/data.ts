@@ -5,7 +5,7 @@
 export type SectionKey =
   | 'login' | 'landing' | 'dashboard' | 'documents' | 'workflow' | 'templates'
   | 'research' | 'assistant' | 'projects' | 'collaboration'
-  | 'history' | 'certificates' | 'results' | 'architecture'
+  | 'history' | 'certificates' | 'results' | 'architecture' | 'admin'
   | 'workflow-upload' | 'workflow-analyze' | 'workflow-model'
   | 'workflow-editor' | 'workflow-generate' | 'workflow-validate' | 'workflow-export'
 

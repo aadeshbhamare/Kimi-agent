@@ -307,8 +307,8 @@ export default function Certificates() {
                     i === step
                       ? 'gradient-brand border-transparent text-white shadow-lift scale-105'
                       : i < step
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
-                      : 'border-slate-200 bg-white text-slate-400 group-hover:border-indigo-200 group-hover:text-indigo-500'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
+                        : 'border-slate-200 bg-white text-slate-400 group-hover:border-indigo-200 group-hover:text-indigo-500'
                   )}
                 >
                   {i < step ? <Check className="h-4 w-4" /> : <s.icon className="h-4 w-4" />}
@@ -907,7 +907,7 @@ export default function Certificates() {
                   <span className="text-slate-500">Decision Status:</span>
                   <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-bold uppercase',
                     activeTestFit.status === 'normal' ? 'bg-emerald-100 text-emerald-800' :
-                    activeTestFit.status === 'adaptive' ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'
+                      activeTestFit.status === 'adaptive' ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'
                   )}>
                     {activeTestFit.status}
                   </span>

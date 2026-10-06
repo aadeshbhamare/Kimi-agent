@@ -16,7 +16,7 @@ import {
 import { cn } from '@/lib/utils'
 
 export interface CircledOption {
-  id: 'm1' | 'm2' | 'sender' | 'architecture'
+  id: 'm1' | 'm2' | 'sender' | 'admin' | 'architecture'
   title: string
   shortTitle: string
   code: string
@@ -94,29 +94,29 @@ export const WORKFLOW_OPTIONS: CircledOption[] = [
     route: 'certificates',
   },
   {
-    id: 'architecture',
-    code: 'ARCH',
-    title: 'System Architecture & Metrics',
-    shortTitle: 'Pipeline Architecture',
-    description: 'Inspect the dual-module execution architecture, latency analysis, and experimental evaluation results.',
-    tags: ['Dual Pipeline Diagram', 'Ablation Studies', 'Evaluation Benchmarks'],
-    icon: Cpu,
+    id: 'admin',
+    code: 'CORP',
+    title: 'Company Admin Command Center',
+    shortTitle: 'Company Admin',
+    description: 'Restricted company portal: DNS SPF/DKIM verification, SMTP relay, AI key vault, user directory, and cryptographic audit ledgers.',
+    tags: ['Restricted Company Access', 'Sender Domain & DNS', 'Audit & Hash Vault'],
+    icon: ShieldCheck,
     theme: {
-      circleBg: 'from-emerald-500 to-teal-600',
-      activeBorder: 'border-emerald-500',
-      activeRing: 'ring-emerald-400/40',
-      activeGlow: 'shadow-[0_0_25px_rgba(16,185,129,0.3)]',
-      badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      badgeText: 'text-emerald-600',
-      iconColor: 'text-emerald-500',
+      circleBg: 'from-slate-700 via-slate-800 to-indigo-900',
+      activeBorder: 'border-indigo-500',
+      activeRing: 'ring-indigo-400/40',
+      activeGlow: 'shadow-[0_0_25px_rgba(99,102,241,0.3)]',
+      badgeBg: 'bg-slate-900 text-indigo-300 border-indigo-500/40',
+      badgeText: 'text-indigo-400',
+      iconColor: 'text-indigo-400',
     },
-    route: 'architecture',
+    route: 'admin',
   },
 ]
 
 interface CircledOptionSelectorProps {
   onProceed?: (option: CircledOption) => void
-  initialSelected?: 'm1' | 'm2' | 'sender' | 'architecture'
+  initialSelected?: 'm1' | 'm2' | 'sender' | 'admin' | 'architecture'
   title?: string
   subtitle?: string
 }
@@ -129,7 +129,7 @@ export function CircledOptionSelector({
 }: CircledOptionSelectorProps) {
   const { navigate } = useApp()
   const { user } = useAuth()
-  const [selectedId, setSelectedId] = useState<'m1' | 'm2' | 'sender' | 'architecture'>(initialSelected)
+  const [selectedId, setSelectedId] = useState<'m1' | 'm2' | 'sender' | 'admin' | 'architecture'>(initialSelected)
 
   const selectedOption = WORKFLOW_OPTIONS.find((o) => o.id === selectedId) || WORKFLOW_OPTIONS[0]
 

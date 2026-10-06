@@ -30,6 +30,7 @@ export default function Login() {
     user,
     loginWithGoogle,
     loginAsGuestDemo,
+    loginAsCompanyAdmin,
     startEmailOtpLogin,
     verifyOtp,
     resendOtp,
@@ -205,6 +206,17 @@ export default function Login() {
                   className="rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition"
                 >
                   Quick Demo Guest Access
+                </button>
+                <button
+                  onClick={async () => {
+                    await loginAsCompanyAdmin()
+                    navigate('admin')
+                    toast.success('Authorized as DocuGenius Executive Admin')
+                  }}
+                  className="rounded-xl border border-indigo-500/40 bg-indigo-950/60 px-3 py-1.5 text-xs font-bold text-indigo-300 hover:bg-indigo-900/60 hover:text-white transition flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5 text-indigo-400" />
+                  <span>Company Staff Login</span>
                 </button>
               </div>
             )}
@@ -662,17 +674,11 @@ export default function Login() {
             </button>
             <span>•</span>
             <button
-              onClick={() => navigate('architecture')}
-              className="text-slate-400 hover:text-white transition"
+              onClick={() => navigate('admin')}
+              className="text-indigo-400 hover:text-indigo-300 font-bold transition inline-flex items-center gap-1"
             >
-              System Architecture
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => navigate('results')}
-              className="text-slate-400 hover:text-white transition"
-            >
-              Experimental Validation
+              <ShieldCheck className="h-3.5 w-3.5 text-indigo-400" />
+              Company Admin Portal
             </button>
           </div>
         </div>

@@ -42,13 +42,20 @@ export default function Landing() {
             </span>
           </div>
 
-          <nav className="hidden items-center gap-6 text-[13px] font-semibold text-slate-600 lg:flex">
-            <a href="#diagram" className="hover:text-indigo-600 transition-colors">Platform Diagram</a>
+          <nav className="hidden items-center gap-5 text-[13px] font-semibold text-slate-600 lg:flex">
+            <a href="#how-it-works" className="hover:text-indigo-600 transition-colors">How It Works</a>
             <a href="#modules" className="hover:text-indigo-600 transition-colors">Modules (M1 & M2)</a>
             <a href="#auth-identity" className="hover:text-indigo-600 transition-colors">Google & OTP Auth</a>
             <a href="#sender-mailer" className="hover:text-indigo-600 transition-colors">Fast Sender Mailer</a>
             <a href="#preservation" className="hover:text-indigo-600 transition-colors">Original Assets</a>
             <a href="#faq" className="hover:text-indigo-600 transition-colors">FAQ</a>
+            <button
+              onClick={() => navigate('admin')}
+              className="text-xs font-bold text-slate-900 hover:text-indigo-600 flex items-center gap-1.5 ml-1 px-2.5 py-1 rounded-xl border border-slate-300 hover:border-indigo-400 bg-white shadow-2xs transition"
+            >
+              <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" />
+              <span>Company Admin</span>
+            </button>
           </nav>
 
           <div className="flex items-center gap-2.5">
@@ -184,24 +191,101 @@ export default function Landing() {
       </section>
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          3. FULL ARCHITECTURE DIAGRAM SECTION (DIRECTLY FROM USER IMAGE)
+          3. HOW IT WORKS IN 3 STEPS (SHIFTED RAW ARCHITECTURE TO COMPANY ADMIN)
       ────────────────────────────────────────────────────────────────────────── */}
-      <section id="diagram" className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-        <div className="text-center mb-8">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white shadow-xs">
-            <Layers3 className="h-3.5 w-3.5 text-indigo-400" /> Platform Architecture Map
+      <section id="how-it-works" className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+        <div className="text-center mb-12">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-xs font-bold text-indigo-700">
+            <Sparkles className="h-3.5 w-3.5 text-indigo-500" /> Simplified 3-Step Execution
           </span>
           <h2 className="mt-3 text-3xl font-black text-slate-900 tracking-tight sm:text-4xl">
-            DocuGenius AI Architecture
+            How DocuGenius AI Works
           </h2>
           <p className="mt-2 text-sm text-slate-500 max-w-2xl mx-auto">
-            Interactive, end-to-end representation of the dual-module system featuring 8-step execution pipelines and unified cloud infrastructure.
+            From raw documents or high-res certificate templates to thousands of personalized, verified files delivered directly to recipients.
           </p>
         </div>
 
-        {/* Embedded Architecture Visualizer */}
-        <div className="shadow-lift rounded-3xl overflow-hidden border border-slate-200">
-          <ArchitectureVisualizer onStepClick={(module: 'm1' | 'm2', _step: number) => navigate(module === 'm1' ? 'workflow' : 'certificates')} />
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Step 1 */}
+          <div className="rounded-3xl border border-sky-100 bg-gradient-to-b from-sky-50/40 via-white to-slate-50 p-6 shadow-soft relative overflow-hidden group hover:shadow-lift transition-all">
+            <div className="flex items-center justify-between">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-600 text-white font-black text-sm shadow-lift">
+                01
+              </span>
+              <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[10px] font-bold text-sky-800">
+                0% Distortion
+              </span>
+            </div>
+            <h3 className="mt-5 text-lg font-bold text-slate-900">Upload Template or Document</h3>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+              Drag and drop genuine PDF, DOCX, TXT, or institutional certificate background images. Our Design Lock engine keeps all original logos, signatures, and artwork completely intact.
+            </p>
+            <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2 text-[11px] font-bold text-sky-600">
+              <FileText className="h-3.5 w-3.5" /> PDF · DOCX · PNG · JPG Supported
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="rounded-3xl border border-indigo-100 bg-gradient-to-b from-indigo-50/40 via-white to-slate-50 p-6 shadow-soft relative overflow-hidden group hover:shadow-lift transition-all">
+            <div className="flex items-center justify-between">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white font-black text-sm shadow-lift">
+                02
+              </span>
+              <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-[10px] font-bold text-indigo-800">
+                AI Intelligence
+              </span>
+            </div>
+            <h3 className="mt-5 text-lg font-bold text-slate-900">Map Schema & Import Recipient Roster</h3>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+              AI automatically detects 14 universal document fields or certificate placeholders. Import your Excel or CSV roster; intelligent text fitting dynamically wraps and scales long names.
+            </p>
+            <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2 text-[11px] font-bold text-indigo-600">
+              <Sparkles className="h-3.5 w-3.5" /> Auto Font Scaling & Text Wrapping
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="rounded-3xl border border-violet-100 bg-gradient-to-b from-violet-50/40 via-white to-slate-50 p-6 shadow-soft relative overflow-hidden group hover:shadow-lift transition-all">
+            <div className="flex items-center justify-between">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-600 text-white font-black text-sm shadow-lift">
+                03
+              </span>
+              <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[10px] font-bold text-violet-800">
+                Instant Delivery
+              </span>
+            </div>
+            <h3 className="mt-5 text-lg font-bold text-slate-900">Export Batch or Dispatch from Registered Email</h3>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+              Download high-res print-ready ZIP packages or dispatch directly from your verified registered organizer email address with 30/s parallel socket speed and live telemetry tracking.
+            </p>
+            <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2 text-[11px] font-bold text-violet-600">
+              <Send className="h-3.5 w-3.5" /> Direct Sender Email Attribution
+            </div>
+          </div>
+        </div>
+
+        {/* Company Admin Gateway Notice Banner */}
+        <div className="mt-10 rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400 shrink-0">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-white">Company & Organization Administrators</div>
+              <div className="text-xs text-slate-400">
+                Internal system telemetry, DNS SPF/DKIM verification, AI model API key vaults, and SHA-256 audit ledgers are securely managed in the Company Admin Portal.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('admin')}
+            className="rounded-xl gradient-brand px-4 py-2.5 text-xs font-bold text-white shadow-lift hover:brightness-110 transition flex items-center gap-1.5 shrink-0"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Access Company Admin</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       </section>
 
@@ -645,6 +729,14 @@ export default function Landing() {
               className="text-xs font-bold text-indigo-600 hover:underline"
             >
               Auth Hub
+            </button>
+            <span className="text-slate-300">·</span>
+            <button
+              onClick={() => navigate('admin')}
+              className="text-xs font-bold text-slate-800 hover:text-indigo-600 hover:underline inline-flex items-center gap-1"
+            >
+              <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" />
+              Company Admin
             </button>
           </div>
         </div>

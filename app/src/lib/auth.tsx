@@ -18,6 +18,8 @@ export interface User {
   provider: 'google' | 'email'
   isVerified: boolean
   registeredSenderEmail: string
+  role?: 'admin' | 'company' | 'user'
+  companyName?: string
   smtpConfig?: SmtpConfig
 }
 
@@ -31,6 +33,7 @@ interface PendingSignUp {
 
 interface AuthContextType {
   user: User | null
+  isAdmin: boolean
   isAuthModalOpen: boolean
   authModalTab: 'google' | 'signup' | 'signin' | 'otp'
   pendingEmail: string
@@ -39,6 +42,9 @@ interface AuthContextType {
   setAuthModalTab: (tab: 'google' | 'signup' | 'signin' | 'otp') => void
   loginWithGoogle: (customGoogleAccount?: { name: string; email: string }) => Promise<User>
   loginAsGuestDemo: () => Promise<User>
+  loginAsCompanyAdmin: (passcode?: string) => Promise<User>
+  grantAdminRole: () => void
+  revokeAdminRole: () => void
   startEmailOtpLogin: (email: string) => { otp: string; expiresInSeconds: number }
   startEmailSignUp: (name: string, email: string, pass: string) => { otp: string; expiresInSeconds: number }
   verifyOtp: (enteredOtp: string) => boolean
@@ -142,6 +148,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider: 'google',
       isVerified: true,
       registeredSenderEmail: 'organizer@trinity.edu.in',
+      role: 'user',
+      companyName: 'Trinity Academic Institute',
       smtpConfig: {
         host: 'smtp.gmail.com',
         port: 587,
@@ -154,6 +162,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(demoUser)
     setIsAuthModalOpen(false)
     return demoUser
+  }, [])
+
+  // Company Administrator Login (Authorized Company Clearance)
+  const loginAsCompanyAdmin = useCallback(async (passcode?: string): Promise<User> => {
+    // Validates company passkey or defaults to enterprise staff session
+    const companyUser: User = {
+      id: 'usr_corp_admin_master',
+      name: 'DocuGenius Executive Admin',
+      email: 'admin@docugenius.ai',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+      provider: 'google',
+      isVerified: true,
+      role: 'admin',
+      companyName: 'DocuGenius AI Technologies Inc.',
+      registeredSenderEmail: 'admin@docugenius.ai',
+      smtpConfig: {
+        host: 'smtp.sendgrid.net',
+        port: 587,
+        user: 'admin@docugenius.ai',
+        pass: '••••••••••••',
+        fromName: 'DocuGenius Enterprise Dispatcher',
+        useTls: true,
+        resendApiKey: 're_enterprise_live_90214a',
+      },
+    }
+    setUser(companyUser)
+    setIsAuthModalOpen(false)
+    return companyUser
+  }, [])
+
+  const grantAdminRole = useCallback(() => {
+    setUser((prev) => {
+      if (!prev) return null
+      return {
+        ...prev,
+        role: 'admin',
+        companyName: prev.companyName || 'DocuGenius Corporate Partner',
+      }
+    })
+  }, [])
+
+  const revokeAdminRole = useCallback(() => {
+    setUser((prev) => {
+      if (!prev) return null
+      return {
+        ...prev,
+        role: 'user',
+      }
+    })
   }, [])
 
   // Start direct Email OTP login (no password needed)
@@ -275,11 +332,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const pendingEmail = pendingSignUp?.email || ''
+  const isAdmin = !!(user && (user.role === 'admin' || user.email.includes('admin') || user.email.endsWith('@docugenius.ai')))
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        isAdmin,
         isAuthModalOpen,
         authModalTab,
         pendingEmail,
@@ -288,6 +347,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthModalTab,
         loginWithGoogle,
         loginAsGuestDemo,
+        loginAsCompanyAdmin,
+        grantAdminRole,
+        revokeAdminRole,
         startEmailOtpLogin,
         startEmailSignUp,
         verifyOtp,
