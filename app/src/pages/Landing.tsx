@@ -109,12 +109,21 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[radial-gradient(#6366f1_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.12] pointer-events-none" />
         
         <div className="relative mx-auto max-w-6xl px-4 text-center sm:px-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200/80 bg-white/90 px-3.5 py-1 text-xs font-bold text-indigo-700 shadow-xs backdrop-blur">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>DocuGenius AI: One Platform · Two Powerful Modules</span>
-          </div>
+          {isAuthenticated && user ? (
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50/90 px-4 py-1.5 text-xs font-bold text-emerald-800 shadow-xs backdrop-blur animate-fade-up">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              <span>Step 1 Completed: Signed in as <strong className="text-emerald-950">{user.name}</strong> ({user.email})</span>
+              <span className="text-emerald-400">·</span>
+              <span className="text-indigo-700">Step 2: Choose Module A or Module B Below</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200/80 bg-white/90 px-3.5 py-1 text-xs font-bold text-indigo-700 shadow-xs backdrop-blur">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>DocuGenius AI: Step 1 (Authentication) ➔ Step 2 (Dual Core Modules)</span>
+            </div>
+          )}
 
-          <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-black tracking-tight text-slate-900 sm:text-6xl sm:leading-[1.12]">
+          <h1 className="mx-auto mt-4 max-w-4xl text-4xl font-black tracking-tight text-slate-900 sm:text-6xl sm:leading-[1.12]">
             Universal Document Engineering &{' '}
             <span className="text-gradient">Intelligent Certificate Automation</span>
           </h1>
@@ -126,20 +135,32 @@ export default function Landing() {
           {/* Action Button Row */}
           <div className="mt-8 flex flex-wrap justify-center items-center gap-3.5">
             <button
-              onClick={() => navigate('workflow')}
+              onClick={() => {
+                if (!isAuthenticated) {
+                  navigate('login')
+                  return
+                }
+                navigate('workflow')
+              }}
               className="inline-flex items-center gap-2 rounded-xl gradient-m1 px-6 py-3.5 text-sm font-bold text-white shadow-lift hover:brightness-110 transition-all"
             >
               <FileText className="h-4 w-4" />
-              <span>Launch Document Engineering (M1)</span>
+              <span>Launch Module A (Document Engineering)</span>
               <ArrowRight className="h-4 w-4" />
             </button>
 
             <button
-              onClick={() => navigate('certificates')}
+              onClick={() => {
+                if (!isAuthenticated) {
+                  navigate('login')
+                  return
+                }
+                navigate('certificates')
+              }}
               className="inline-flex items-center gap-2 rounded-xl gradient-m2 px-6 py-3.5 text-sm font-bold text-white shadow-lift hover:brightness-110 transition-all"
             >
               <Award className="h-4 w-4" />
-              <span>Launch Certificate Studio (M2)</span>
+              <span>Launch Module B (Certificate Studio)</span>
               <ArrowRight className="h-4 w-4" />
             </button>
 
@@ -487,10 +508,16 @@ export default function Landing() {
                 <p className="text-sm text-slate-500 mt-1">From generic documents to personalized, ready-to-use files</p>
               </div>
               <button
-                onClick={() => navigate('workflow')}
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    navigate('login')
+                    return
+                  }
+                  navigate('workflow')
+                }}
                 className="rounded-xl gradient-m1 px-5 py-2.5 text-xs font-bold text-white shadow-lift hover:brightness-110 flex items-center gap-1.5"
               >
-                <span>Open M1 Workflow</span> <ArrowRight className="h-4 w-4" />
+                <span>Open Module A Workflow</span> <ArrowRight className="h-4 w-4" />
               </button>
             </div>
 
@@ -535,10 +562,16 @@ export default function Landing() {
                 <p className="text-sm text-slate-500 mt-1">Design, personalize, fit and distribute authentic certificates with ease</p>
               </div>
               <button
-                onClick={() => navigate('certificates')}
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    navigate('login')
+                    return
+                  }
+                  navigate('certificates')
+                }}
                 className="rounded-xl gradient-m2 px-5 py-2.5 text-xs font-bold text-white shadow-lift hover:brightness-110 flex items-center gap-1.5"
               >
-                <span>Open M2 Studio</span> <ArrowRight className="h-4 w-4" />
+                <span>Open Module B Studio</span> <ArrowRight className="h-4 w-4" />
               </button>
             </div>
 

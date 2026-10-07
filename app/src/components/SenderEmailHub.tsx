@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth, type SmtpConfig } from '@/lib/auth'
 import { useApp } from '@/lib/store'
 import type { CertRecord } from '@/lib/data'
-import { generateCertRecords } from '@/lib/data'
 import { cn } from '@/lib/utils'
 import {
   Dialog,
@@ -51,9 +50,19 @@ export function SenderEmailHub({
   records?: CertRecord[]
   onRecordsStatusChange?: (statusMap: Record<number, 'Queued' | 'Sent' | 'Delivered' | 'Opened'>) => void
 }) {
-  const effectiveRecords = records && records.length > 0 ? records : generateCertRecords(25)
   const { user, updateSenderEmail, updateSmtpConfig, openAuthModal } = useAuth()
   const { logActivity } = useApp()
+
+  const fallbackRecord: CertRecord = {
+    name: user?.name || 'Aadesh Bhamare',
+    college: 'DocuGenius Academy',
+    achievement: 'Certificate of Excellence',
+    certNumber: 'DOCU-2026-001',
+    date: '07 Oct 2026',
+    rank: 'Distinction',
+    email: user?.email || 'recipient@example.com',
+  }
+  const effectiveRecords = records && records.length > 0 ? records : [fallbackRecord]
 
   const [activeTab, setActiveTab] = useState<'dispatcher' | 'architecture' | 'settings'>('dispatcher')
 

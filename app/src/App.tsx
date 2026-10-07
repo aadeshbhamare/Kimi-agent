@@ -21,7 +21,18 @@ import Admin from '@/pages/Admin'
 
 function Router() {
   const { section } = useApp()
-  const { isAdmin } = useAuth()
+  const { user, isAdmin } = useAuth()
+
+  // Mandatory Platform Rule: Step 1 is Authentication (First Login, Then All Other)
+  // If user is unauthenticated, all modules and workflows are gated behind the Login portal.
+  if (!user && section !== 'login') {
+    return (
+      <div className="min-h-screen bg-slate-950">
+        <Login intendedSection={section} />
+        {isAdmin && <PageShowcaseBar />}
+      </div>
+    )
+  }
 
   if (section === 'login') {
     return (

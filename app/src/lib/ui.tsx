@@ -39,8 +39,8 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   )
 }
 
-export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('rounded-2xl border border-slate-200/80 bg-white shadow-soft', className)}>{children}</div>
+export function Card({ children, className, onClick }: { children: ReactNode; className?: string; onClick?: () => void }) {
+  return <div onClick={onClick} className={cn('rounded-2xl border border-slate-200/80 bg-white shadow-soft', className)}>{children}</div>
 }
 
 export function ProgressBar({ value, className }: { value: number; className?: string }) {

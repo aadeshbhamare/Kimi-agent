@@ -25,7 +25,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-export default function Login() {
+export default function Login({ intendedSection }: { intendedSection?: string } = {}) {
   const {
     user,
     loginWithGoogle,
@@ -37,6 +37,9 @@ export default function Login() {
     logout,
   } = useAuth()
   const { navigate, logActivity } = useApp()
+
+  // Target destination after successful authentication
+  const destination = intendedSection && intendedSection !== 'login' ? (intendedSection as any) : 'landing'
 
   // Authentication State
   const [authMethod, setAuthMethod] = useState<'google' | 'otp'>('google')
@@ -75,7 +78,7 @@ export default function Login() {
       })
       logActivity('certificate', `Signed in via Google (${signedInUser.email})`)
       setTimeout(() => {
-        navigate('landing')
+        navigate(destination)
       }, 500)
     } catch {
       toast.error('Google Sign-In failed')
@@ -94,7 +97,7 @@ export default function Login() {
       })
       logActivity('certificate', `Entered demo session as ${demoUser.email}`)
       setTimeout(() => {
-        navigate('landing')
+        navigate(destination)
       }, 400)
     } finally {
       setIsVerifying(false)
@@ -137,7 +140,7 @@ export default function Login() {
         })
         logActivity('certificate', `Verified & signed in via OTP (${otpEmail})`)
         setTimeout(() => {
-          navigate('landing')
+          navigate(destination)
         }, 500)
       } else {
         toast.error('Invalid or Expired OTP', {
@@ -235,7 +238,7 @@ export default function Login() {
           <div className="lg:col-span-7 flex flex-col items-center justify-center text-center lg:text-left order-2 lg:order-1">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-950/60 px-3 py-1 text-xs font-bold text-indigo-300 shadow-xs">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Universal Document & Certificate Automation</span>
+              <span>Step 1: Mandatory Identity & Authentication Gate</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
@@ -243,8 +246,25 @@ export default function Login() {
             </h1>
 
             <p className="mt-2 text-sm sm:text-base text-slate-400 max-w-lg">
-              One unified platform for Universal Document Personalization (M1) and Intelligent Certificate Automation with zero distortion (M2).
+              One unified platform for Universal Document Personalization (Module A) and Intelligent Certificate Automation with zero distortion (Module B).
             </p>
+
+            {/* 7-Step Master Workflow Pipeline Breadcrumbs */}
+            <div className="mt-5 flex flex-wrap items-center justify-center lg:justify-start gap-1 text-[10px] font-bold text-slate-400 max-w-xl">
+              <span className="rounded-md bg-indigo-600 px-2.5 py-1 text-white shadow-xs">1. Login & Auth (Active)</span>
+              <ChevronRight className="h-3 w-3 text-slate-600 shrink-0" />
+              <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-slate-400">2. Module Selection</span>
+              <ChevronRight className="h-3 w-3 text-slate-600 shrink-0" />
+              <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-slate-400">3. Ingest Data</span>
+              <ChevronRight className="h-3 w-3 text-slate-600 shrink-0" />
+              <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-slate-400">4. AI OCR & NLP</span>
+              <ChevronRight className="h-3 w-3 text-slate-600 shrink-0" />
+              <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-slate-400">5. Custom Studio</span>
+              <ChevronRight className="h-3 w-3 text-slate-600 shrink-0" />
+              <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-slate-400">6. Batch Gen</span>
+              <ChevronRight className="h-3 w-3 text-slate-600 shrink-0" />
+              <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-slate-400">7. Export & Email</span>
+            </div>
 
             {/* Circular Animated Showcase Component */}
             <div className="mt-6 w-full flex justify-center">
@@ -307,27 +327,39 @@ export default function Login() {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
+                  {/* Step 2 Action Buttons */}
                   <div className="space-y-3">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-300 flex items-center justify-between">
+                      <span>Step 2: Launch Your Workflow</span>
+                      <span className="text-[10px] text-emerald-400 font-mono">Ready ✓</span>
+                    </div>
+
                     <button
                       onClick={() => navigate('landing')}
                       className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600 px-5 py-3 text-sm font-black text-white shadow-lift hover:brightness-110 transition active:scale-[0.98]"
                     >
-                      <Sparkles className="h-4 w-4" /> Enter DocuGenius AI Studio
+                      <Sparkles className="h-4 w-4" /> Enter DocuGenius AI Studio (Landing)
                     </button>
 
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => navigate('certificates')}
-                        className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white transition"
-                      >
-                        <Award className="h-3.5 w-3.5 text-violet-400" /> Module 2 (Certs)
-                      </button>
-                      <button
                         onClick={() => navigate('workflow')}
-                        className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white transition"
+                        className="flex flex-col items-start rounded-xl border border-sky-500/30 bg-sky-950/40 p-3 text-left hover:bg-sky-900/40 transition group"
                       >
-                        <FileText className="h-3.5 w-3.5 text-sky-400" /> Module 1 (UDM)
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-sky-300 group-hover:text-white">
+                          <FileText className="h-3.5 w-3.5 text-sky-400" /> Module A
+                        </div>
+                        <span className="text-[10.5px] text-slate-400 mt-0.5 leading-tight">Document Engineering & Personalization</span>
+                      </button>
+
+                      <button
+                        onClick={() => navigate('certificates')}
+                        className="flex flex-col items-start rounded-xl border border-violet-500/30 bg-violet-950/40 p-3 text-left hover:bg-violet-900/40 transition group"
+                      >
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-violet-300 group-hover:text-white">
+                          <Award className="h-3.5 w-3.5 text-violet-400" /> Module B
+                        </div>
+                        <span className="text-[10.5px] text-slate-400 mt-0.5 leading-tight">Intelligent Certificate Automation</span>
                       </button>
                     </div>
 
@@ -344,10 +376,28 @@ export default function Login() {
                     STATE B: USER IS NOT SIGNED IN (GOOGLE / OTP OPTIONS)
                 ────────────────────────────────────────────────────────── */
                 <div className="space-y-6">
+                  {/* Step 1 Indicator Badge */}
+                  <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
+                    <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Step 1 of 8: Mandatory Identity & Authentication Gate</span>
+                  </div>
+
+                  {intendedSection && intendedSection !== 'login' && (
+                    <div className="flex items-start gap-2.5 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs text-amber-200 animate-fade-up">
+                      <Lock className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+                      <div>
+                        <strong className="font-bold text-amber-300">Authentication Required for {intendedSection.toUpperCase()}</strong>
+                        <p className="mt-0.5 text-amber-200/90 text-[11.5px] leading-relaxed">
+                          In accordance with the DocuGenius AI pipeline, please sign in below to unlock and proceed directly to your requested workflow.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <h2 className="text-xl font-black text-white">Choose Login Option</h2>
                     <p className="mt-1 text-xs text-slate-400">
-                      Access the full document personalization and certificate generation engine.
+                      Sign in to unlock Module A (Document Engineering) and Module B (Certificate Automation).
                     </p>
                   </div>
 

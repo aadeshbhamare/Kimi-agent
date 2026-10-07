@@ -7,6 +7,8 @@ export interface RenderCertOptions {
   customImageElement?: HTMLImageElement | null
   nameYPercent?: number // 0..100
   fontSizeFactor?: number
+  textColor?: string
+  accentColor?: string
 }
 
 export function renderCertToCanvas(
@@ -118,7 +120,7 @@ export function renderCertToCanvas(
   const multiplier = options?.fontSizeFactor ?? 2.1
   const canvasFontSize = Math.round(baseSize * multiplier)
   ctx.font = `bold ${canvasFontSize}px "Georgia", serif`
-  ctx.fillStyle = '#1e1b4b'
+  ctx.fillStyle = options?.textColor || '#1e1b4b'
 
   const nameY = options?.nameYPercent ? (height * options.nameYPercent) / 100 : 490
 
@@ -135,7 +137,7 @@ export function renderCertToCanvas(
   }
 
   // Underline for name
-  ctx.strokeStyle = '#6366f1'
+  ctx.strokeStyle = options?.accentColor || '#6366f1'
   ctx.lineWidth = 3
   ctx.beginPath()
   ctx.moveTo(width / 2 - 280, nameY + 25)

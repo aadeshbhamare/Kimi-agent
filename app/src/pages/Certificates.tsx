@@ -24,8 +24,28 @@ import {
   UploadCloud, FileSpreadsheet, ScanSearch, Lock, Ruler, Wand2, Layers3, MonitorDown,
   Check, CheckCircle2, Download, ChevronRight, Mail, Send, Eye, RefreshCw, AlertTriangle,
   Plus, Trash2, Search, ShieldCheck, Sparkles, Image as ImageIcon, ExternalLink, Filter,
-  Sliders,
+  Sliders, Edit3, Palette, RotateCcw,
 } from 'lucide-react'
+
+export const COLOR_PRESETS = [
+  { label: 'Royal Navy', text: '#1e1b4b', accent: '#4f46e5' },
+  { label: 'Sapphire Blue', text: '#1e3a8a', accent: '#2563eb' },
+  { label: 'Emerald Green', text: '#064e3b', accent: '#059669' },
+  { label: 'Luxury Gold', text: '#78350f', accent: '#d97706' },
+  { label: 'Crimson Maroon', text: '#7f1d1d', accent: '#dc2626' },
+  { label: 'Amethyst Purple', text: '#581c87', accent: '#9333ea' },
+  { label: 'Onyx Charcoal', text: '#09090b', accent: '#475569' },
+]
+
+export const INITIAL_SINGLE_RECORD: CertRecord = {
+  name: 'Aadesh Bhamare',
+  college: 'DocuGenius Academy of Engineering',
+  achievement: 'Certificate of Excellence & Outstanding Contribution',
+  certNumber: 'DOCU-2026-001',
+  date: '07 Oct 2026',
+  rank: 'Distinction',
+  email: 'aadesh@example.com',
+}
 
 const PIPELINE_STEPS = [
   { id: 'template', label: '1. Template & Field Detection', icon: ScanSearch, sub: 'AI field detection & bounding boxes' },
@@ -41,13 +61,13 @@ function certPdf(record: CertRecord, fit?: FitResult): Blob {
   return buildPdf([{
     landscape: true,
     lines: [
-      { text: record.college, size: 13, align: 'center' },
+      { text: record.college || 'DocuGenius Academy', size: 13, align: 'center' },
       { text: 'CERTIFICATE OF ACHIEVEMENT', size: 22, bold: true, align: 'center', gap: 10 },
       { text: 'This certificate is proudly presented to', size: 10, align: 'center', gap: 8 },
-      { text: record.name, size, bold: true, align: 'center', gap: 14 },
-      { text: record.achievement, size: 12, align: 'center', gap: 10 },
-      { text: `Rank: ${record.rank}`, size: 11, align: 'center', gap: 6 },
-      { text: `${record.certNumber}        Date: ${record.date}`, size: 9, align: 'center', gap: 40 },
+      { text: record.name || 'Recipient Name', size, bold: true, align: 'center', gap: 14 },
+      { text: record.achievement || 'Certificate of Excellence', size: 12, align: 'center', gap: 10 },
+      { text: record.rank ? `Rank: ${record.rank}` : 'Distinction', size: 11, align: 'center', gap: 6 },
+      { text: `${record.certNumber || 'DOCU-001'}        Date: ${record.date || '2026'}`, size: 9, align: 'center', gap: 40 },
     ],
   }])
 }
@@ -68,8 +88,14 @@ export default function Certificates() {
   const [templateScanned, setTemplateScanned] = useState(true)
   const [activeHighlightField, setActiveHighlightField] = useState<string | null>(null)
 
-  // Step 2: Data Processing & Mapping
-  const [records, setRecords] = useState<CertRecord[]>(() => generateCertRecords(100))
+  // Live Editable & Color Customization
+  const [isLiveEditable, setIsLiveEditable] = useState(true)
+  const [certTextColor, setCertTextColor] = useState('#1e1b4b')
+  const [certAccentColor, setCertAccentColor] = useState('#4f46e5')
+  const [activeEditIndex, setActiveEditIndex] = useState(0)
+
+  // Step 2: Data Processing & Mapping (Clean single starter record instead of 100 fake students)
+  const [records, setRecords] = useState<CertRecord[]>([INITIAL_SINGLE_RECORD])
   const [searchQuery, setSearchQuery] = useState('')
   const [mapping, setMapping] = useState<Record<string, string>>({
     name: 'Full Name',
@@ -93,13 +119,13 @@ export default function Certificates() {
   const [showLockOverlay, setShowLockOverlay] = useState(true)
 
   // Step 4: Text-Fit & Adaptive Formatting
-  const [fits, setFits] = useState<FitResult[]>(() => analyzeFit(generateCertRecords(100)))
+  const [fits, setFits] = useState<FitResult[]>(() => analyzeFit([INITIAL_SINGLE_RECORD]))
   const [analyzingFit, setAnalyzingFit] = useState(false)
-  const [testCustomName, setTestCustomName] = useState('Dr. Alexandrianathaniel Fitzwilliam-Longbottom III')
+  const [testCustomName, setTestCustomName] = useState('Aadesh Bhamare')
   const [previewTab, setPreviewTab] = useState<'all' | 'normal' | 'adaptive' | 'review'>('all')
 
   // Step 5: Batch Generation & Validation
-  const [numberPattern, setNumberPattern] = useState('TRINITY-2026-###')
+  const [numberPattern, setNumberPattern] = useState('DOCU-2026-###')
   const [genProgress, setGenProgress] = useState(-1) // -1 idle, 0..100 running
   const [validationRun, setValidationRun] = useState(true)
   const [validationFilter, setValidationFilter] = useState<'all' | 'issues'>('all')
@@ -183,6 +209,20 @@ export default function Certificates() {
     timers.current.push(iv)
   }
 
+  // Live Field Change Handler
+  const handleActiveFieldChange = (field: keyof CertRecord, val: string, index = activeEditIndex) => {
+    setRecords((prev) => {
+      const next = [...prev]
+      const targetIdx = Math.min(Math.max(0, index), Math.max(0, next.length - 1))
+      if (next.length === 0) {
+        next.push({ ...INITIAL_SINGLE_RECORD, [field]: val })
+      } else {
+        next[targetIdx] = { ...next[targetIdx], [field]: val }
+      }
+      return next
+    })
+  }
+
   // Export handlers
   const downloadSinglePng = async (rec: CertRecord, fit?: FitResult) => {
     try {
@@ -190,6 +230,8 @@ export default function Certificates() {
         customImageUrl: customTemplateUrl,
         nameYPercent,
         fontSizeFactor: nameFontSizeScale * 2.1,
+        textColor: certTextColor,
+        accentColor: certAccentColor,
       })
       downloadBlob(pngBlob, `${rec.certNumber}_${rec.name.replace(/\s+/g, '_')}.png`)
     } catch {
@@ -208,12 +250,14 @@ export default function Certificates() {
 
   const downloadAllPngZip = async () => {
     const files = await Promise.all(
-      records.slice(0, 30).map(async (r, i) => {
+      records.map(async (r, i) => {
         const rec = numbered(r, i)
         const blob = await certPng(rec, fits[i], {
           customImageUrl: customTemplateUrl,
           nameYPercent,
           fontSizeFactor: nameFontSizeScale * 2.1,
+          textColor: certTextColor,
+          accentColor: certAccentColor,
         })
         return { name: `${rec.certNumber}_${r.name.replace(/\s+/g, '_')}.png`, data: blob }
       })
@@ -238,7 +282,7 @@ export default function Certificates() {
         ],
       }
     })
-    downloadBlob(buildPdf(pages), 'certificates_combined_100_pages.pdf')
+    downloadBlob(buildPdf(pages), `certificates_combined_${records.length}_pages.pdf`)
   }
 
   // Automated Email Dispatch Simulator
@@ -475,20 +519,154 @@ export default function Certificates() {
                 )}
               </div>
 
-              {/* Template Live Preview with Detection Bounding Boxes */}
-              <div className="mt-5">
-                <div className="mb-2 flex items-center justify-between text-xs text-slate-600">
-                  <span className="font-semibold">Interactive Template Preview (with AI Bounding Boxes)</span>
-                  <span className="text-emerald-600 font-medium">✓ 6 dynamic field slots detected</span>
+              {/* Template Live Preview & Live Customizer */}
+              <div className="mt-5 space-y-3">
+                {/* Live Customizer & Color Palette Bar */}
+                <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/70 via-purple-50/50 to-sky-50/60 p-4 shadow-2xs">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-indigo-100/80 pb-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-2xs">
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                          <span>Live Certificate Customizer & Color Palette</span>
+                          <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.2 text-[9px] font-bold">
+                            Interactive
+                          </span>
+                        </div>
+                        <div className="text-[10.5px] text-slate-500">
+                          Edit name & details directly, or pick custom colors. Maintains identical typography & layout.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setIsLiveEditable(!isLiveEditable)}
+                        className={cn(
+                          'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition border',
+                          isLiveEditable
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        )}
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                        <span>{isLiveEditable ? 'Direct Edit: ON' : 'Direct Edit: OFF'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => downloadSinglePng(records[0] || INITIAL_SINGLE_RECORD, fits[0])}
+                        className="flex items-center gap-1 rounded-lg bg-white border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-indigo-600 shadow-2xs"
+                      >
+                        <Download className="h-3.5 w-3.5" /> PNG
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => downloadBlob(certPdf(records[0] || INITIAL_SINGLE_RECORD, fits[0]), `${records[0]?.certNumber || 'certificate'}.pdf`)}
+                        className="flex items-center gap-1 rounded-lg bg-white border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-indigo-600 shadow-2xs"
+                      >
+                        <Download className="h-3.5 w-3.5" /> PDF
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick Inline Replacement Inputs & Color Presets */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <label className="block text-[10.5px] font-bold uppercase text-slate-600 mb-1">
+                        Recipient Name
+                      </label>
+                      <input
+                        type="text"
+                        value={records[0]?.name ?? ''}
+                        onChange={(e) => handleActiveFieldChange('name', e.target.value, 0)}
+                        placeholder="e.g. Aadesh Bhamare"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 outline-none focus:border-indigo-500 shadow-2xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10.5px] font-bold uppercase text-slate-600 mb-1">
+                        College / Organization
+                      </label>
+                      <input
+                        type="text"
+                        value={records[0]?.college ?? ''}
+                        onChange={(e) => handleActiveFieldChange('college', e.target.value, 0)}
+                        placeholder="e.g. DocuGenius Academy"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 outline-none focus:border-indigo-500 shadow-2xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10.5px] font-bold uppercase text-slate-600 mb-1">
+                        Achievement / Award
+                      </label>
+                      <input
+                        type="text"
+                        value={records[0]?.achievement ?? ''}
+                        onChange={(e) => handleActiveFieldChange('achievement', e.target.value, 0)}
+                        placeholder="e.g. Certificate of Excellence"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 outline-none focus:border-indigo-500 shadow-2xs"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between text-[10.5px] font-bold uppercase text-slate-600 mb-1">
+                        <span>Color Theme</span>
+                        <label className="cursor-pointer text-[10px] text-indigo-600 font-bold hover:underline flex items-center gap-1">
+                          Custom
+                          <input
+                            type="color"
+                            value={certTextColor}
+                            onChange={(e) => {
+                              setCertTextColor(e.target.value)
+                              setCertAccentColor(e.target.value)
+                            }}
+                            className="sr-only"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {COLOR_PRESETS.map((p) => (
+                          <button
+                            key={p.label}
+                            type="button"
+                            title={p.label}
+                            onClick={() => {
+                              setCertTextColor(p.text)
+                              setCertAccentColor(p.accent)
+                            }}
+                            className={cn(
+                              'h-7 w-7 rounded-lg border-2 transition-all shrink-0',
+                              certTextColor === p.text
+                                ? 'scale-110 ring-2 ring-indigo-400 border-white shadow-sm'
+                                : 'border-white/60 hover:scale-105'
+                            )}
+                            style={{ backgroundColor: p.text }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
                 <div className="relative">
                   <CertificateView
-                    record={records[0]}
+                    record={records[0] || INITIAL_SINGLE_RECORD}
                     templateId={selectedTemplate.id}
                     customImageUrl={customTemplateUrl}
                     nameYPercent={nameYPercent}
                     nameFontSizeScale={nameFontSizeScale}
-                    showOverlays
+                    textColor={certTextColor}
+                    accentColor={certAccentColor}
+                    isEditable={isLiveEditable}
+                    onFieldChange={(field, val) => handleActiveFieldChange(field, val, 0)}
+                    showOverlays={!isLiveEditable}
                     activeFieldHighlight={activeHighlightField}
                   />
                 </div>
@@ -583,23 +761,40 @@ export default function Certificates() {
                 </button>
               </div>
 
-              {/* Sample datasets */}
-              <div className="mt-4">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Load Preset Dataset</label>
-                <div className="mt-2 grid grid-cols-2 gap-2">
+              {/* Clean Recipient Actions */}
+              <div className="mt-4 space-y-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Recipient Management</label>
+                <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => { const r = generateCertRecords(100); setRecords(r); refreshFits(r); }}
-                    className="rounded-lg border border-slate-200 bg-white p-2 text-left text-xs hover:border-indigo-300"
+                    onClick={() => {
+                      const newRec: CertRecord = {
+                        name: 'Recipient Name',
+                        college: 'Institution / College',
+                        achievement: 'Certificate of Excellence',
+                        certNumber: `DOCU-2026-${String(records.length + 1).padStart(3, '0')}`,
+                        date: '07 Oct 2026',
+                        rank: 'Distinction',
+                        email: 'recipient@example.com',
+                      }
+                      const updated = [...records, newRec]
+                      setRecords(updated)
+                      refreshFits(updated)
+                      toast.success('Added new recipient row')
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 p-2.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100/70 transition shadow-2xs"
                   >
-                    <div className="font-semibold text-slate-800">100 Academic Merit</div>
-                    <div className="text-[10px] text-slate-400">SPPU Pune Engineering</div>
+                    <Plus className="h-3.5 w-3.5" /> Add Recipient
                   </button>
                   <button
-                    onClick={() => { const r = generateCertRecords(50); setRecords(r); refreshFits(r); }}
-                    className="rounded-lg border border-slate-200 bg-white p-2 text-left text-xs hover:border-indigo-300"
+                    onClick={() => {
+                      const sample5 = generateCertRecords(5)
+                      setRecords(sample5)
+                      refreshFits(sample5)
+                      toast.info('Loaded 5 sample recipients')
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs"
                   >
-                    <div className="font-semibold text-slate-800">50 Hackathon Finalists</div>
-                    <div className="text-[10px] text-slate-400">TechFest 2026 Batch</div>
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500" /> 5 Samples
                   </button>
                 </div>
               </div>
@@ -652,12 +847,12 @@ export default function Certificates() {
                     onClick={() => {
                       const newRec: CertRecord = {
                         name: 'New Recipient',
-                        college: 'Trinity Academy of Engineering',
+                        college: 'DocuGenius Academy',
                         achievement: 'Certificate of Merit',
-                        certNumber: `TRINITY-2026-${String(records.length + 1).padStart(3, '0')}`,
-                        date: '25 May 2026',
+                        certNumber: `DOCU-2026-${String(records.length + 1).padStart(3, '0')}`,
+                        date: '07 Oct 2026',
                         rank: 'Participant',
-                        email: 'recipient@university.edu.in',
+                        email: 'recipient@example.com',
                       }
                       const updated = [newRec, ...records]
                       setRecords(updated)
@@ -685,45 +880,53 @@ export default function Certificates() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredRecords.slice(0, 15).map((r, i) => (
-                      <tr key={i} className="hover:bg-indigo-50/30 transition">
-                        <td className="px-3 py-2 font-mono text-[10px] text-slate-400">{i + 1}</td>
-                        <td className="px-3 py-2 font-semibold text-slate-900">
-                          <input
-                            value={r.name}
-                            onChange={(e) => {
-                              const updated = [...records]
-                              updated[i].name = e.target.value
-                              setRecords(updated)
-                              refreshFits(updated)
-                            }}
-                            className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-400 focus:bg-white outline-none px-1 rounded"
-                          />
-                        </td>
-                        <td className="px-3 py-2 text-slate-600 truncate max-w-[140px]">{r.college}</td>
-                        <td className="px-3 py-2 text-slate-600 truncate max-w-[160px]">{r.achievement}</td>
-                        <td className="px-3 py-2 font-mono text-[10.5px] text-slate-500">{r.email}</td>
-                        <td className="px-3 py-2 text-slate-700">{r.rank}</td>
-                        <td className="px-3 py-2 font-mono text-[10.5px] text-slate-500">{r.certNumber}</td>
-                        <td className="px-3 py-2">
-                          <button
-                            onClick={() => {
-                              const updated = records.filter((_, idx) => idx !== i)
-                              setRecords(updated)
-                              refreshFits(updated)
-                            }}
-                            className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                    {filteredRecords.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-8 text-center text-xs text-slate-400">
+                          No recipients found. Click "+ Add Row" or upload a CSV file.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredRecords.map((r, i) => (
+                        <tr key={i} className="hover:bg-indigo-50/30 transition">
+                          <td className="px-3 py-2 font-mono text-[10px] text-slate-400">{i + 1}</td>
+                          <td className="px-3 py-2 font-semibold text-slate-900">
+                            <input
+                              value={r.name}
+                              onChange={(e) => {
+                                const updated = [...records]
+                                updated[i].name = e.target.value
+                                setRecords(updated)
+                                refreshFits(updated)
+                              }}
+                              className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-400 focus:bg-white outline-none px-1 rounded"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-slate-600 truncate max-w-[140px]">{r.college}</td>
+                          <td className="px-3 py-2 text-slate-600 truncate max-w-[160px]">{r.achievement}</td>
+                          <td className="px-3 py-2 font-mono text-[10.5px] text-slate-500">{r.email}</td>
+                          <td className="px-3 py-2 text-slate-700">{r.rank}</td>
+                          <td className="px-3 py-2 font-mono text-[10.5px] text-slate-500">{r.certNumber}</td>
+                          <td className="px-3 py-2">
+                            <button
+                              onClick={() => {
+                                const updated = records.filter((_, idx) => idx !== i)
+                                setRecords(updated)
+                                refreshFits(updated)
+                              }}
+                              className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
               <div className="border-t border-slate-100 px-4 py-2 text-xs text-slate-500 flex justify-between items-center bg-slate-50">
-                <span>Showing first 15 of {records.length} records</span>
+                <span>Showing {filteredRecords.length} recipient(s)</span>
                 <button
                   onClick={() => setStep(2)}
                   className="rounded-lg gradient-brand px-3 py-1 text-xs font-semibold text-white shadow-xs"
@@ -798,12 +1001,16 @@ export default function Certificates() {
               <span className="text-violet-600 font-mono text-[10.5px]">Template: {selectedTemplate.name}</span>
             </div>
             <CertificateView
-              record={records[0]}
+              record={records[0] || INITIAL_SINGLE_RECORD}
               templateId={selectedTemplate.id}
               showDesignLock={showLockOverlay}
               customImageUrl={customTemplateUrl}
               nameYPercent={nameYPercent}
               nameFontSizeScale={nameFontSizeScale}
+              textColor={certTextColor}
+              accentColor={certAccentColor}
+              isEditable={isLiveEditable}
+              onFieldChange={(field, val) => handleActiveFieldChange(field, val, 0)}
             />
 
             <div className="mt-4 flex justify-end">
@@ -1095,30 +1302,259 @@ export default function Certificates() {
       ────────────────────────────────────────────────────────────────────────── */}
       {step === 5 && (
         <div className="space-y-6">
-          {/* Multiple Output Formats */}
+          {/* ────────────────────────────────────────────────────────────────── */}
+          {/* READY CERTIFICATE: LIVE EDITOR & COLOR CUSTOMIZER                   */}
+          {/* ────────────────────────────────────────────────────────────────── */}
+          <Card className="p-6 bg-gradient-to-br from-white via-indigo-50/20 to-slate-50 border-indigo-200/80 shadow-md">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-xs">
+                    <Edit3 className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Ready Certificate Live Editor & Color Customizer
+                  </h3>
+                </div>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Direct inline editing on canvas: replace recipient name, institution, or achievement in the exact same style, or instantly switch color themes.
+                </p>
+              </div>
+
+              {/* Action buttons for active certificate */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const activeRec = numbered(records[activeEditIndex] || records[0] || INITIAL_SINGLE_RECORD, activeEditIndex)
+                    downloadSinglePng(activeRec, fits[activeEditIndex])
+                    toast.success('Downloaded High-Res PNG')
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl gradient-brand px-3.5 py-2 text-xs font-bold text-white shadow-lift hover:brightness-110"
+                >
+                  <ImageIcon className="h-3.5 w-3.5" /> Download High-Res PNG
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const activeRec = numbered(records[activeEditIndex] || records[0] || INITIAL_SINGLE_RECORD, activeEditIndex)
+                    downloadBlob(certPdf(activeRec, fits[activeEditIndex]), `${activeRec.certNumber}_${activeRec.name.replace(/\s+/g, '_')}.pdf`)
+                    toast.success('Downloaded Official PDF')
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-600 shadow-xs"
+                >
+                  <Download className="h-3.5 w-3.5" /> Download PDF
+                </button>
+              </div>
+            </div>
+
+            {/* Recipient Selector Tabs if > 1 record */}
+            {records.length > 1 && (
+              <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                <span className="text-xs font-bold text-slate-500 shrink-0">Select Certificate:</span>
+                {records.map((r, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setActiveEditIndex(i)}
+                    className={cn(
+                      'rounded-xl px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all border shadow-2xs',
+                      activeEditIndex === i
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs scale-102'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'
+                    )}
+                  >
+                    #{i + 1} {r.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Live Customizer Controls Bar */}
+            <div className="mt-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {/* 1. Recipient Name */}
+                <div>
+                  <label className="block text-[10.5px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                    Recipient Name (Direct Edit)
+                  </label>
+                  <input
+                    type="text"
+                    value={records[activeEditIndex]?.name ?? ''}
+                    onChange={(e) => handleActiveFieldChange('name', e.target.value, activeEditIndex)}
+                    placeholder="e.g. Aadesh Bhamare"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-1.5 text-xs font-bold text-slate-900 outline-none focus:border-indigo-500 focus:bg-white shadow-2xs"
+                  />
+                </div>
+
+                {/* 2. College / Institution */}
+                <div>
+                  <label className="block text-[10.5px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                    Institution / College
+                  </label>
+                  <input
+                    type="text"
+                    value={records[activeEditIndex]?.college ?? ''}
+                    onChange={(e) => handleActiveFieldChange('college', e.target.value, activeEditIndex)}
+                    placeholder="e.g. DocuGenius Academy"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-1.5 text-xs font-medium text-slate-800 outline-none focus:border-indigo-500 focus:bg-white shadow-2xs"
+                  />
+                </div>
+
+                {/* 3. Award / Achievement */}
+                <div>
+                  <label className="block text-[10.5px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                    Award / Achievement Title
+                  </label>
+                  <input
+                    type="text"
+                    value={records[activeEditIndex]?.achievement ?? ''}
+                    onChange={(e) => handleActiveFieldChange('achievement', e.target.value, activeEditIndex)}
+                    placeholder="e.g. Certificate of Excellence"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-1.5 text-xs font-medium text-slate-800 outline-none focus:border-indigo-500 focus:bg-white shadow-2xs"
+                  />
+                </div>
+
+                {/* 4. Color Theme Presets + Picker */}
+                <div>
+                  <div className="flex items-center justify-between text-[10.5px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                    <span>Change Colour Theme</span>
+                    <label className="cursor-pointer text-[10.5px] text-indigo-600 font-bold hover:underline flex items-center gap-1">
+                      Custom
+                      <input
+                        type="color"
+                        value={certTextColor}
+                        onChange={(e) => {
+                          setCertTextColor(e.target.value)
+                          setCertAccentColor(e.target.value)
+                        }}
+                        className="sr-only"
+                      />
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    {COLOR_PRESETS.map((p) => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        title={p.label}
+                        onClick={() => {
+                          setCertTextColor(p.text)
+                          setCertAccentColor(p.accent)
+                          toast.success(`Color theme set to ${p.label}`)
+                        }}
+                        className={cn(
+                          'h-7 w-7 rounded-lg border-2 transition-all shrink-0',
+                          certTextColor === p.text
+                            ? 'scale-110 ring-2 ring-indigo-400 border-white shadow-sm'
+                            : 'border-white/60 hover:scale-105'
+                        )}
+                        style={{ backgroundColor: p.text }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-row for Rank, Cert ID, and Date */}
+              <div className="mt-3 pt-3 border-t border-slate-100 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                    Distinction / Rank
+                  </label>
+                  <input
+                    type="text"
+                    value={records[activeEditIndex]?.rank ?? ''}
+                    onChange={(e) => handleActiveFieldChange('rank', e.target.value, activeEditIndex)}
+                    placeholder="e.g. Distinction, 1st Place"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1 text-xs text-slate-800 outline-none focus:border-indigo-400 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                    Certificate Number / ID
+                  </label>
+                  <input
+                    type="text"
+                    value={records[activeEditIndex]?.certNumber ?? ''}
+                    onChange={(e) => handleActiveFieldChange('certNumber', e.target.value, activeEditIndex)}
+                    placeholder="e.g. DOCU-2026-001"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1 text-xs font-mono text-slate-800 outline-none focus:border-indigo-400 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                    Issue Date
+                  </label>
+                  <input
+                    type="text"
+                    value={records[activeEditIndex]?.date ?? ''}
+                    onChange={(e) => handleActiveFieldChange('date', e.target.value, activeEditIndex)}
+                    placeholder="e.g. 07 Oct 2026"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1 text-xs text-slate-800 outline-none focus:border-indigo-400 focus:bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Live Interactive Canvas with Click-to-Edit in Exact Style */}
+            <div className="mt-5">
+              <div className="mb-2 flex items-center justify-between text-xs text-slate-600 font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+                  <span>Interactive Canvas (Click any text on the certificate to edit directly)</span>
+                </span>
+                <span className="text-[11px] font-mono text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-2 py-0.5">
+                  Ready for Export · 0% Layout Distortion
+                </span>
+              </div>
+
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 shadow-lg bg-slate-900/5 p-2 sm:p-4">
+                <CertificateView
+                  record={records[activeEditIndex] || records[0] || INITIAL_SINGLE_RECORD}
+                  fit={fits[activeEditIndex]}
+                  templateId={selectedTemplate.id}
+                  customImageUrl={customTemplateUrl}
+                  nameYPercent={nameYPercent}
+                  nameFontSizeScale={nameFontSizeScale}
+                  textColor={certTextColor}
+                  accentColor={certAccentColor}
+                  isEditable={true}
+                  onFieldChange={(field, val) => handleActiveFieldChange(field, val, activeEditIndex)}
+                />
+              </div>
+            </div>
+          </Card>
+
+          {/* ────────────────────────────────────────────────────────────────── */}
+          {/* BATCH READY CERTIFICATES & BULK EXPORT                             */}
+          {/* ────────────────────────────────────────────────────────────────── */}
           <Card className="p-6">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Multiple Output Formats</h3>
+                <h3 className="text-base font-bold text-slate-900">Batch Certificates ({records.length} Ready)</h3>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Supports individual PDF/PNG certificates, combined PDFs, and ZIP downloads.
+                  Download individual certificates, export combined multi-page documents, or generate complete ZIP archives.
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <button
+                  type="button"
                   onClick={downloadCombined}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-600 shadow-xs"
                 >
                   <Download className="h-3.5 w-3.5" /> Combined Multi-Page PDF ({records.length})
                 </button>
                 <button
+                  type="button"
                   onClick={downloadAllZip}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-600 shadow-xs"
                 >
                   <Download className="h-3.5 w-3.5" /> All PDFs (ZIP Archive)
                 </button>
                 <button
+                  type="button"
                   onClick={downloadAllPngZip}
                   className="inline-flex items-center gap-1.5 rounded-xl gradient-brand px-3.5 py-2 text-xs font-semibold text-white shadow-lift hover:brightness-110"
                 >
@@ -1128,20 +1564,37 @@ export default function Certificates() {
             </div>
 
             {/* Individual certificate cards */}
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {records.slice(0, 6).map((r, i) => {
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {records.map((r, i) => {
                 const rec = numbered(r, i)
+                const isActive = activeEditIndex === i
                 return (
-                  <Card key={i} className="p-3 bg-white">
-                    <CertificateView
-                      record={rec}
-                      fit={fits[i]}
-                      templateId={selectedTemplate.id}
-                      customImageUrl={customTemplateUrl}
-                      nameYPercent={nameYPercent}
-                      nameFontSizeScale={nameFontSizeScale}
-                      small
-                    />
+                  <Card
+                    key={i}
+                    className={cn(
+                      'p-3 bg-white transition-all cursor-pointer',
+                      isActive ? 'ring-2 ring-indigo-500 shadow-md scale-101' : 'hover:border-indigo-200 hover:shadow-xs'
+                    )}
+                    onClick={() => setActiveEditIndex(i)}
+                  >
+                    <div className="relative">
+                      <CertificateView
+                        record={rec}
+                        fit={fits[i]}
+                        templateId={selectedTemplate.id}
+                        customImageUrl={customTemplateUrl}
+                        nameYPercent={nameYPercent}
+                        nameFontSizeScale={nameFontSizeScale}
+                        textColor={certTextColor}
+                        accentColor={certAccentColor}
+                        small
+                      />
+                      {isActive && (
+                        <div className="absolute top-1 right-1 rounded-md bg-indigo-600 px-1.5 py-0.5 text-[8px] font-bold text-white shadow-xs">
+                          Active In Editor
+                        </div>
+                      )}
+                    </div>
                     <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-xs">
                       <div className="min-w-0">
                         <div className="truncate font-semibold text-slate-800">{rec.name}</div>
@@ -1149,16 +1602,36 @@ export default function Certificates() {
                       </div>
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => downloadBlob(certPdf(rec, fits[i]), `${rec.certNumber}.pdf`)}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setActiveEditIndex(i)
+                            toast.info(`Editing ${rec.name}`)
+                          }}
+                          title="Edit in Canvas"
+                          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            downloadBlob(certPdf(rec, fits[i]), `${rec.certNumber}_${rec.name.replace(/\s+/g, '_')}.pdf`)
+                          }}
                           title="Download PDF"
-                          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-indigo-300 hover:text-indigo-600"
+                          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50"
                         >
                           <Download className="h-3.5 w-3.5" />
                         </button>
                         <button
-                          onClick={() => downloadSinglePng(rec, fits[i])}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            downloadSinglePng(rec, fits[i])
+                          }}
                           title="Download High-Res PNG"
-                          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-cyan-300 hover:text-cyan-600"
+                          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-cyan-300 hover:text-cyan-600 hover:bg-cyan-50/50"
                         >
                           <ImageIcon className="h-3.5 w-3.5" />
                         </button>
@@ -1168,11 +1641,6 @@ export default function Certificates() {
                 )
               })}
             </div>
-            {records.length > 6 && (
-              <div className="mt-3 text-center text-xs text-slate-400">
-                … plus {records.length - 6} more personalized certificates ready in the batch
-              </div>
-            )}
           </Card>
 
           {/* Automated Email Distribution & Organizer Verification */}

@@ -536,16 +536,7 @@ export interface DocumentRow {
   project: string
 }
 
-export const DOCUMENTS: DocumentRow[] = [
-  { id: 'd1', name: 'Final Year Project Report — MailTrace AI', type: 'DOCX', modified: '2 hours ago', status: 'In Review', aiStatus: 'Analyzed', pages: 50, project: 'FYP MailTrace AI' },
-  { id: 'd2', name: 'Research Paper — Phishing Detection Survey', type: 'PDF', modified: 'Yesterday', status: 'Final', aiStatus: 'Analyzed', pages: 12, project: 'FYP MailTrace AI' },
-  { id: 'd3', name: 'Thesis — Adaptive Document Layouts', type: 'LaTeX', modified: '2 days ago', status: 'Draft', aiStatus: 'Analyzed', pages: 88, project: 'PG Thesis' },
-  { id: 'd4', name: 'Assignment 4 — Operating Systems', type: 'Markdown', modified: '3 days ago', status: 'Final', aiStatus: 'Analyzed', pages: 6, project: 'Coursework' },
-  { id: 'd5', name: 'Resume — Aadesh Bhamare', type: 'Typst', modified: '4 days ago', status: 'Final', aiStatus: 'Analyzed', pages: 2, project: 'Placement' },
-  { id: 'd6', name: 'Internship Completion Letter', type: 'DOCX', modified: '5 days ago', status: 'Generated', aiStatus: 'Analyzed', pages: 1, project: 'Placement' },
-  { id: 'd7', name: 'Lab Manual — Machine Learning', type: 'PDF', modified: '1 week ago', status: 'Draft', aiStatus: 'Queued', pages: 120, project: 'Coursework' },
-  { id: 'd8', name: 'Proposal — Smart Campus Initiative', type: 'DOCX', modified: '1 week ago', status: 'In Review', aiStatus: 'Analyzing', pages: 18, project: 'Admin' },
-]
+export const DOCUMENTS: DocumentRow[] = []
 
 export interface ProjectRow {
   id: string
@@ -557,12 +548,7 @@ export interface ProjectRow {
   color: string
 }
 
-export const PROJECTS: ProjectRow[] = [
-  { id: 'p1', name: 'Final Year Project — MailTrace AI', docs: 14, members: 4, updated: '2 hours ago', progress: 78, color: '#6366f1' },
-  { id: 'p2', name: 'PG Thesis — Adaptive Layouts', docs: 6, members: 2, updated: '2 days ago', progress: 41, color: '#8b5cf6' },
-  { id: 'p3', name: 'Coursework — Semester 8', docs: 9, members: 1, updated: '3 days ago', progress: 62, color: '#0ea5e9' },
-  { id: 'p4', name: 'Placement Documents', docs: 5, members: 1, updated: '4 days ago', progress: 90, color: '#10b981' },
-]
+export const PROJECTS: ProjectRow[] = []
 
 export interface TemplateRow {
   id: string
@@ -597,12 +583,8 @@ export interface ActivityItem {
 }
 
 export const INITIAL_ACTIVITY: ActivityItem[] = [
-  { id: 'a1', icon: 'validate', text: 'AI validation completed — Final Year Project Report (2 warnings)', time: '18 min ago' },
-  { id: 'a2', icon: 'generate', text: '4 personalized drafts generated from master document', time: '26 min ago' },
-  { id: 'a3', icon: 'analyze', text: 'Document analyzed — 12 fields, 8 tables, 14 images detected', time: '41 min ago' },
-  { id: 'a4', icon: 'certificate', text: 'Certificate batch generated — 100 certificates (TRINITY-2026)', time: '1 hour ago' },
-  { id: 'a5', icon: 'edit', text: 'AI edit applied — “Convert references to IEEE”', time: '2 hours ago' },
-  { id: 'a6', icon: 'export', text: 'Exported Research Paper — Phishing Detection Survey (PDF)', time: 'Yesterday' },
+  { id: 'a1', icon: 'validate', text: 'System ready: AI Document Engineering & Certificate Studio online', time: 'Just now' },
+  { id: 'a2', icon: 'certificate', text: 'Canvas engine initialized with 0% layout distortion guarantee', time: '5 min ago' },
 ]
 
 export interface HistoryItem {
@@ -616,15 +598,7 @@ export interface HistoryItem {
 }
 
 export const HISTORY: HistoryItem[] = [
-  { id: 'h1', action: 'AI validation run', target: 'Final Year Project Report', user: 'You', time: '18 min ago', kind: 'Validation', restorable: false },
-  { id: 'h2', action: 'Generated 4 drafts', target: 'Student Name personalization', user: 'You', time: '26 min ago', kind: 'Generation', restorable: true },
-  { id: 'h3', action: 'Version v14 saved', target: 'Final Year Project Report', user: 'You', time: '40 min ago', kind: 'Version', restorable: true },
-  { id: 'h4', action: 'AI edit: headings bold', target: 'Chapter 1–7', user: 'You', time: '1 hour ago', kind: 'AI Action', restorable: true },
-  { id: 'h5', action: 'Bulk certificate job', target: 'TRINITY-2026 batch (100)', user: 'You', time: '1 hour ago', kind: 'Bulk Job', restorable: true },
-  { id: 'h6', action: 'Version v13 saved', target: 'Final Year Project Report', user: 'Rahul Patil', time: '3 hours ago', kind: 'Version', restorable: true },
-  { id: 'h7', action: 'Exported PDF', target: 'Research Paper — Phishing Detection', user: 'You', time: 'Yesterday', kind: 'Export', restorable: false },
-  { id: 'h8', action: 'Comment resolved', target: 'Abstract paragraph 2', user: 'Prof. S. Kulkarni', time: 'Yesterday', kind: 'Edit', restorable: false },
-  { id: 'h9', action: 'Version v12 saved', target: 'Thesis — Adaptive Layouts', user: 'You', time: '2 days ago', kind: 'Version', restorable: true },
+  { id: 'h1', action: 'System initialized', target: 'Universal Document & Certificate Studio', user: 'System', time: 'Just now', kind: 'AI Action', restorable: false },
 ]
 
 export interface ResearchDoc {
@@ -797,7 +771,7 @@ function seededRand(seed: number) {
   return () => { s = (s * 9301 + 49297) % 233280; return s / 233280 }
 }
 
-export function generateCertRecords(count = 100): CertRecord[] {
+export function generateCertRecords(count = 5): CertRecord[] {
   const rand = seededRand(42)
   const out: CertRecord[] = []
   for (let i = 0; i < count; i++) {

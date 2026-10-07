@@ -20,29 +20,47 @@ export default function Projects() {
         subtitle="Documents, drafts, research, comments and versions — grouped by project"
         actions={<button className="inline-flex items-center gap-2 rounded-xl gradient-brand px-4 py-2.5 text-sm font-semibold text-white shadow-lift hover:brightness-110"><Plus className="h-4 w-4" /> New Project</button>}
       />
-      <div className="grid gap-4 sm:grid-cols-2">
-        {PROJECTS.map((p) => (
-          <Card key={p.id} className="p-5 transition hover:shadow-lift cursor-pointer" >
-            <button className="w-full text-left" onClick={() => setOpen(p.id)}>
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: `${p.color}18` }}>
-                  <FolderKanban className="h-5 w-5" style={{ color: p.color }} />
+      {PROJECTS.length === 0 ? (
+        <Card className="py-16 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 mb-3">
+            <FolderKanban className="h-7 w-7" />
+          </div>
+          <h3 className="text-base font-bold text-slate-800">No Projects Created Yet</h3>
+          <p className="mt-1 text-sm text-slate-500 max-w-md mx-auto">
+            Group your documents, personalization batches, feedback rounds, and export archives into unified project workspaces.
+          </p>
+          <button
+            onClick={() => navigate('workflow')}
+            className="mt-5 inline-flex items-center gap-2 rounded-xl gradient-brand px-5 py-2.5 text-sm font-semibold text-white shadow-lift hover:brightness-110"
+          >
+            <Plus className="h-4 w-4" /> Start In Workflow
+          </button>
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {PROJECTS.map((p) => (
+            <Card key={p.id} className="p-5 transition hover:shadow-lift cursor-pointer" >
+              <button className="w-full text-left" onClick={() => setOpen(p.id)}>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: `${p.color}18` }}>
+                    <FolderKanban className="h-5 w-5" style={{ color: p.color }} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-bold text-slate-900">{p.name}</div>
+                    <div className="text-xs text-slate-500">Updated {p.updated}</div>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-bold text-slate-900">{p.name}</div>
-                  <div className="text-xs text-slate-500">Updated {p.updated}</div>
+                <div className="mt-3 flex items-center gap-4 text-[11.5px] text-slate-500">
+                  <span className="inline-flex items-center gap-1"><FileText className="h-3.5 w-3.5" />{p.docs} docs</span>
+                  <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" />{p.members} members</span>
+                  <span className="ml-auto font-semibold" style={{ color: p.color }}>{p.progress}%</span>
                 </div>
-              </div>
-              <div className="mt-3 flex items-center gap-4 text-[11.5px] text-slate-500">
-                <span className="inline-flex items-center gap-1"><FileText className="h-3.5 w-3.5" />{p.docs} docs</span>
-                <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" />{p.members} members</span>
-                <span className="ml-auto font-semibold" style={{ color: p.color }}>{p.progress}%</span>
-              </div>
-              <ProgressBar value={p.progress} className="mt-2" />
-            </button>
-          </Card>
-        ))}
-      </div>
+                <ProgressBar value={p.progress} className="mt-2" />
+              </button>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {project && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={() => setOpen(null)}>
